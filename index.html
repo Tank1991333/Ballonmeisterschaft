@@ -188,6 +188,31 @@ input[type=range]{padding:0;border:0;background:none;accent-color:var(--ink)}
 .checkrow{display:flex;gap:.6rem;align-items:center;font-weight:600;margin:.2rem 0 .7rem}
 .checkrow input{width:1.3rem;height:1.3rem;accent-color:var(--ink)}
 .wtab td.old{color:var(--warn)}
+.movepad{position:absolute;left:.65rem;right:4.4rem;bottom:.65rem;background:var(--panel);border:1.5px solid var(--panel-edge);border-radius:14px;padding:.55rem .6rem;box-shadow:0 6px 20px rgba(0,0,0,.18)}
+.mp-head{display:flex;align-items:center;gap:.4rem;margin-bottom:.45rem}
+.mp-t{flex:1;min-width:0;line-height:1.15}
+.mp-t b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mp-t span{font-family:var(--num);font-size:1.05rem;color:var(--ink-2)}
+.mp-body{display:flex;gap:.6rem;align-items:center}
+.mp-grid{display:grid;grid-template-columns:repeat(3,48px);grid-template-rows:repeat(3,48px);gap:5px;flex:0 0 auto}
+.mp-grid button{border:1.5px solid var(--panel-edge);background:var(--paper-2);border-radius:10px;font-size:1.35rem;font-weight:700;padding:0}
+.mp-grid button:active{background:var(--ink);color:var(--panel)}
+#mp-undo{font-size:1.15rem;color:var(--ink-2)}
+.mp-side{flex:1;display:flex;flex-direction:column;gap:.35rem;min-width:0}
+.mp-side .mp-l{font-size:.8rem;color:var(--ink-2)}
+.mp-side small{font-size:.82rem;color:var(--ink-2);line-height:1.25}
+.seg.vert{flex-direction:column}
+.seg.vert button{padding:.5rem}
+:root.big .mp-grid{grid-template-columns:repeat(3,58px);grid-template-rows:repeat(3,58px)}
+:root.big .movepad{right:5.6rem}
+.mapwrap.padopen .altctl{display:none !important}
+.cursorbar{display:flex;align-items:center;gap:.5rem;background:var(--panel);border:1.5px solid var(--panel-edge);border-radius:12px;padding:.4rem .45rem .4rem .7rem}
+.cb-t{flex:1;min-width:0;font-family:var(--num);font-size:1.1rem;font-weight:700;line-height:1.15}
+.cb-t small{display:block;font-family:var(--font);font-weight:500;font-size:.82rem;color:var(--ink-2)}
+.hint .ghost{background:transparent;color:var(--panel);border:1.5px solid var(--panel)}
+.ck-ic{width:1.7rem;height:1.7rem;border-radius:50%;display:grid;place-items:center;font-weight:700;color:#fff;background:var(--warn);flex:0 0 auto}
+.ck-ic.ok{background:var(--ok)}
+.tiles .wide{grid-column:1/-1;border-left:5px solid var(--ok)}
 .steps{list-style:none;padding:0;margin:.3rem 0 .6rem}
 .steps li{display:grid;grid-template-columns:5.6rem 1fr;gap:.6rem;padding:.55rem 0;border-bottom:1px solid var(--panel-edge);align-items:baseline}
 .st-t{font-family:var(--num);font-weight:700;font-size:1.15rem;font-variant-numeric:tabular-nums}
@@ -246,7 +271,8 @@ input[type=range]{padding:0;border:0;background:none;accent-color:var(--ink)}
   <div class="overlay">
     <div class="alert" id="alert" role="alert" hidden></div>
     <div class="crewcard" id="crewcard" hidden></div>
-    <div class="hint" id="hint" hidden><span id="hint-text"></span><button id="hint-done">Fertig</button></div>
+    <div class="hint" id="hint" hidden><span id="hint-text"></span><button class="ghost" id="hint-cancel" hidden>Abbrechen</button><button id="hint-done">Fertig</button></div>
+    <div class="cursorbar" id="cursorbar" hidden><div class="cb-t"><span id="cb-code"></span><small id="cb-info"></small></div><button class="btn small" id="cb-add">Ziel hier</button></div>
   </div>
   <div class="rail">
     <button class="rbtn" id="tool-add" aria-pressed="false" aria-label="Ziel auf der Karte setzen" title="Ziel auf der Karte setzen">
@@ -270,6 +296,25 @@ input[type=range]{padding:0;border:0;background:none;accent-color:var(--ink)}
     <div class="rp-top"><span id="rp-title"></span><button class="btn small" id="rp-close">Schließen</button></div>
     <input type="range" id="rp-slider" min="0" max="0" step="1" aria-label="Zeitpunkt der Fahrt">
     <div class="rp-info" id="rp-info"></div>
+  </div>
+  <div class="movepad" id="movepad" hidden>
+    <div class="mp-head">
+      <div class="mp-t"><b id="mp-name"></b><span id="mp-code"></span></div>
+      <button class="btn small" id="mp-edit">Bearbeiten</button>
+      <button class="btn small primary" id="mp-done" style="flex:0 0 auto">Fertig</button>
+    </div>
+    <div class="mp-body">
+      <div class="mp-grid">
+        <button data-d="-1,1" aria-label="Nach Nordwesten">↖</button><button data-d="0,1" aria-label="Nach Norden">↑</button><button data-d="1,1" aria-label="Nach Nordosten">↗</button>
+        <button data-d="-1,0" aria-label="Nach Westen">←</button><button id="mp-undo" aria-label="Zurück zur Ausgangsposition" title="Zurück zur Ausgangsposition">↺</button><button data-d="1,0" aria-label="Nach Osten">→</button>
+        <button data-d="-1,-1" aria-label="Nach Südwesten">↙</button><button data-d="0,-1" aria-label="Nach Süden">↓</button><button data-d="1,-1" aria-label="Nach Südosten">↘</button>
+      </div>
+      <div class="mp-side">
+        <span class="mp-l">Schritt</span>
+        <div class="seg vert" id="mp-step"><button data-s="10">10 m</button><button data-s="100">100 m</button><button data-s="1000">1 km</button></div>
+        <small id="mp-moved"></small>
+      </div>
+    </div>
   </div>
   <div class="altctl" id="altctl" hidden>
     <button id="alt-up" aria-label="Steigen (Simulation)">▲</button>
@@ -313,6 +358,7 @@ input[type=range]{padding:0;border:0;background:none;accent-color:var(--ink)}
   <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="mn-title">
     <h2 id="mn-title">Menü</h2>
     <div class="tiles">
+      <button data-open="check" class="wide"><b>Startcheck</b><small id="mt-check"></small></button>
       <button data-open="tasks"><b>Task Sheet</b><small id="mt-tasks"></small></button>
       <button data-open="list"><b>Ziele</b><small id="mt-list"></small></button>
       <button data-open="wind"><b>Wind</b><small id="mt-wind"></small></button>
@@ -414,6 +460,12 @@ input[type=range]{padding:0;border:0;background:none;accent-color:var(--ink)}
   <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="tl-title">
     <h2 id="tl-title">Ziele</h2>
     <ul class="tlist" id="tlist"></ul>
+    <div class="btns">
+      <label class="btn filebtn" style="flex:1">Ziele importieren<input type="file" id="tl-import" accept=".gpx,.csv,.txt,.wpt" hidden></label>
+      <button class="btn" id="tl-export" style="flex:1">Ziele als GPX</button>
+    </div>
+    <div class="row" style="align-items:center;margin-top:.4rem"><p class="note" id="tl-msg" style="margin:0"></p><button class="btn small" id="tl-undo" style="flex:0 0 auto" hidden>Rückgängig</button></div>
+    <p class="note">Import aus GPX oder CSV, z. B. von der Wettbewerbsleitung. Die CSV braucht je Zeile einen Namen und eine Koordinate als 4/4, 6/7 oder Breite und Länge. Ziele mit gleichem Namen werden aktualisiert. Tippe ein Ziel auf der Karte an, um es mit den Pfeilen zu verschieben.</p>
     <div class="btns">
       <button class="btn" data-close>Schließen</button>
       <button class="btn primary" id="tl-new">Ziel per Koordinate</button>
@@ -526,6 +578,17 @@ input[type=range]{padding:0;border:0;background:none;accent-color:var(--ink)}
       <button class="btn" id="cal-cancel">Abbrechen</button>
       <button class="btn primary" id="cal-ok">Punkt übernehmen</button>
     </div>
+  </div>
+</div>
+
+<!-- Startcheck -->
+<div class="back" id="sheet-check">
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="ck-title">
+    <h2 id="ck-title">Startcheck</h2>
+    <p class="plan-head" id="ck-sum"></p>
+    <ul class="tlist" id="cklist"></ul>
+    <p class="note">Der Check prüft, was die App selbst erkennen kann. Raten und Fallgeschwindigkeit bestätigst du einmal von Hand.</p>
+    <div class="btns"><button class="btn primary" data-close>Fertig</button></div>
   </div>
 </div>
 
@@ -705,7 +768,12 @@ input[type=range]{padding:0;border:0;background:none;accent-color:var(--ink)}
       <button class="btn small" id="st-cleartrack">Track und Markierungen löschen</button>
       <button class="btn small danger" id="st-clearall">Alle Ziele löschen</button>
     </div>
-    <p class="note">Alle Daten bleiben auf diesem Gerät gespeichert. Diese App ist eine Navigationshilfe und ersetzt nicht den offiziellen Logger. Peilungen beziehen sich auf Gitter-Nord.</p>
+    <div class="btns">
+      <button class="btn small" id="bk-save">Sicherung speichern</button>
+      <label class="btn small filebtn">Sicherung laden<input type="file" id="bk-load" accept=".json,application/json" hidden></label>
+    </div>
+    <div class="row" style="align-items:center;margin-top:.4rem"><p class="note" id="bk-msg" style="margin:0"></p><button class="btn small danger" id="bk-apply" style="flex:0 0 auto" hidden>Ersetzen</button></div>
+    <p class="note">Alle Daten bleiben auf diesem Gerät gespeichert. Mit einer Sicherung überträgst du Ziele, Tasks, Sperrgebiete und Einstellungen auf ein anderes Gerät, das Kartenbild ist nicht enthalten. Diese App ist eine Navigationshilfe und ersetzt nicht den offiziellen Logger. Peilungen beziehen sich auf Gitter-Nord.</p>
     <div class="btns"><button class="btn primary" data-close>Fertig</button></div>
   </div>
 </div>
@@ -1144,6 +1212,7 @@ function startGps(){
     const u = ll2utm(c.latitude, c.longitude, z);
     const raw = c.altitude != null ? c.altitude / FT : null;
     pushFix({ E:u.E, N:u.N, altFt: raw != null ? raw + S.settings.altOffsetFt : null, rawAltFt:raw, t: p.timestamp || Date.now() });
+    lastAcc = c.accuracy; lastLon = c.longitude;
     setStatus('GPS ±' + Math.round(c.accuracy) + ' m', c.accuracy <= 30 ? 'ok' : 'warn');
   }, err => {
     setStatus(err.code === 1 ? 'GPS nicht erlaubt' : 'Kein GPS-Signal', 'warn');
@@ -1197,10 +1266,13 @@ function draw(){
   const m = motion(), prof = windProfile(), t = activeTarget();
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.fillStyle = colors.paper; ctx.fillRect(0, 0, W, H);
-  if (replay) { drawMapImage(); drawGrid(); drawPz(); drawReplay(); drawNotes(replay.f.notes || [], true); drawScale(); return; }
+  if (replay) { updateCursorBar(false); drawMapImage(); drawGrid(); drawPz(); drawReplay(); drawNotes(replay.f.notes || [], true); drawScale(); return; }
   frame = { m, prof, t, plan:getPlan(), drop:dropFor(t, profFor(t, prof), m), th:taskHelp(activeTask(), m, prof) };
   drawMapImage(); drawGrid(); drawPz(); drawTrack(); drawNotes(S.notes); drawTargets(); drawTaskHelp(); drawAdvice(); drawDrop();
   drawMeasure(); drawDraft(); drawRemote(); drawBalloon(); drawScale();
+  const cur = (!view.follow || tool === 'move') && !mpad;
+  if (cur) drawCursor();
+  updateCursorBar(cur && !tool);
 }
 function drawMapImage(){
   if (!mapImg || !mapImg.complete || !S.map.has || !S.map.show || !S.map.a) return;
@@ -1294,6 +1366,7 @@ function drawTargets(){
       }
       label('Boden ' + fmtDeg(t.gw.from) + ' ' + String(t.gw.kmh).replace('.', ',') + ' km/h', x + 21, y + 28, { size:12, color:colors['ink-2'] });
     }
+    if (mpad && mpad.id === t.id) { ctx.beginPath(); ctx.arc(x, y, 22, 0, 2 * Math.PI); ctx.strokeStyle = colors.ink; ctx.lineWidth = 2; ctx.setLineDash([4, 4]); ctx.stroke(); ctx.setLineDash([]); }
     const k = on ? 12 : 9; ctx.lineCap = 'round';
     ctx.strokeStyle = colors['target-ink']; ctx.lineWidth = on ? 8.5 : 6.5; cross(x, y, k);
     ctx.strokeStyle = colors.target; ctx.lineWidth = on ? 5 : 3.5; cross(x, y, k);
@@ -1390,11 +1463,12 @@ function drawScale(){
 }
 
 /* ---------- Bedienung der Karte ---------- */
-let tool = null;
+let tool = null, moveId = null;
 function setTool(t){
   tool = tool === t ? null : t;
   if (tool === 'measure') measure = { a:null, b:null };
   if (tool !== 'cal') cal = null;
+  if (tool !== 'move') moveId = null;
   $('#tool-add').setAttribute('aria-pressed', tool === 'add');
   $('#tool-measure').setAttribute('aria-pressed', tool === 'measure');
   updateHint(); requestDraw();
@@ -1403,9 +1477,11 @@ function updateHint(){
   const h = $('#hint');
   if (!tool) { h.hidden = true; return; }
   h.hidden = false;
-  $('#hint-done').textContent = tool === 'cal' ? 'Abbrechen' : 'Fertig';
+  $('#hint-done').textContent = tool === 'cal' ? 'Abbrechen' : tool === 'move' ? 'Hier ablegen' : 'Fertig';
+  $('#hint-cancel').hidden = tool !== 'move';
   $('#hint-text').textContent =
-      tool === 'add' ? 'Tippe auf die Karte, um das Ziel zu setzen.'
+      tool === 'move' ? 'Karte verschieben, bis das Kreuz auf der neuen Stelle liegt.'
+    : tool === 'add' ? 'Tippe auf die Karte, um das Ziel zu setzen.'
     : tool === 'pz' ? (pzDraft.length ? pzDraft.length + (pzDraft.length === 1 ? ' Punkt' : ' Punkte') + ' gesetzt. Weiter tippen oder Fertig.' : 'Tippe den Mittelpunkt oder die Eckpunkte.')
     : tool === 'cal' ? 'Verschiebe und zoome das Bild, dann tippe auf Gitterkreuzung ' + (cal.pts.length + 1) + '.'
     : !measure.a ? 'Tippe auf den Startpunkt.' : !measure.b ? 'Tippe auf den Endpunkt.' : 'Erneut tippen für eine neue Messung.';
@@ -1433,8 +1509,16 @@ const ptrs = new Map(); let gesture = null;
 cv.addEventListener('pointerdown', e => {
   cv.setPointerCapture(e.pointerId); keepAwake();
   ptrs.set(e.pointerId, { x:e.offsetX, y:e.offsetY });
-  if (ptrs.size === 1) gesture = { type:'pan', sx:e.offsetX, sy:e.offsetY, t:performance.now(), moved:false, cx:view.cx, cy:view.cy };
+  if (ptrs.size === 1) {
+    gesture = { type:'pan', sx:e.offsetX, sy:e.offsetY, t:performance.now(), moved:false, cx:view.cx, cy:view.cy };
+    if (!tool && !replay) {
+      const tol = S.settings.big ? 46 : 30, x = e.offsetX, y = e.offsetY;
+      const hit = S.targets.find(t => { const [tx, ty] = w2s(t.E, t.N); return Math.hypot(tx - x, ty - y) < tol; });
+      if (hit) { const g = gesture; g.lp = setTimeout(() => { if (gesture === g && !g.moved && ptrs.size === 1) { g.type = 'drag'; g.id = hit.id; setFollow(false); try { navigator.vibrate && navigator.vibrate(40); } catch (err) {} } }, 450); }
+    }
+  }
   else if (ptrs.size === 2) {
+    if (gesture && gesture.lp) clearTimeout(gesture.lp);
     const [p1, p2] = [...ptrs.values()];
     gesture = { type:'pinch', d:Math.hypot(p1.x - p2.x, p1.y - p2.y) || 1, s:view.s, mid:s2w((p1.x + p2.x) / 2, (p1.y + p2.y) / 2), moved:true };
   }
@@ -1442,9 +1526,10 @@ cv.addEventListener('pointerdown', e => {
 cv.addEventListener('pointermove', e => {
   if (!ptrs.has(e.pointerId) || !gesture) return;
   ptrs.set(e.pointerId, { x:e.offsetX, y:e.offsetY });
+  if (gesture.type === 'drag') { const t = S.targets.find(x => x.id === gesture.id); if (t) { [t.E, t.N] = s2w(e.offsetX, e.offsetY); requestDraw(); } return; }
   if (gesture.type === 'pan' && ptrs.size === 1) {
     const dx = e.offsetX - gesture.sx, dy = e.offsetY - gesture.sy;
-    if (!gesture.moved && Math.hypot(dx, dy) > 7) { gesture.moved = true; setFollow(false); }
+    if (!gesture.moved && Math.hypot(dx, dy) > 7) { gesture.moved = true; if (gesture.lp) clearTimeout(gesture.lp); setFollow(false); }
     if (gesture.moved) { view.cx = gesture.cx - dx / view.s; view.cy = gesture.cy + dy / view.s; requestDraw(); }
   } else if (gesture.type === 'pinch' && ptrs.size === 2) {
     const [p1, p2] = [...ptrs.values()];
@@ -1460,6 +1545,8 @@ cv.addEventListener('pointermove', e => {
 function endPtr(e){
   if (!ptrs.has(e.pointerId)) return;
   ptrs.delete(e.pointerId);
+  if (gesture && gesture.lp) clearTimeout(gesture.lp);
+  if (gesture && gesture.type === 'drag') { gesture = null; save(); invalidatePlan(); updateHud(); requestDraw(); return; }
   if (gesture && gesture.type === 'pan' && !gesture.moved && ptrs.size === 0 && performance.now() - gesture.t < 500) onTap(e.offsetX, e.offsetY);
   if (ptrs.size === 0) gesture = null;
   else if (gesture && gesture.type === 'pinch') { const p = [...ptrs.values()][0]; gesture = { type:'pan', sx:p.x, sy:p.y, t:0, moved:true, cx:view.cx, cy:view.cy }; }
@@ -1479,7 +1566,8 @@ function onTap(x, y){
   if (nt) { openNote(nt); return; }
   let best = null, bd = S.settings.big ? 46 : 30;
   for (const t of S.targets) { const [tx, ty] = w2s(t.E, t.N), d = Math.hypot(tx - x, ty - y); if (d < bd) { bd = d; best = t; } }
-  if (best) setActive(best.id);
+  if (best) { setActive(best.id); openPad(best); }
+  else if (mpad) closePad();
 }
 
 /* ---------- Task-Hilfen ---------- */
@@ -1828,6 +1916,7 @@ function buildGpx(rec){
   for (const k of rec.tasks || []) (k.marks || []).forEach((mk, i) => { out += wpt(mk.E, mk.N, 'T' + k.nr + ' Marker ' + (i + 1), 'Pin'); });
   for (const n of rec.notes || []) { const q = utm2ll(n.E, n.N, z); out += '<wpt lat="' + f6(q.lat) + '" lon="' + f6(q.lon) + '">' + (n.alt != null ? '<ele>' + (n.alt * FT).toFixed(1) + '</ele>' : '') + '<time>' + new Date(n.t).toISOString() + '</time><name>' + esc(n.text ? n.text.slice(0, 40) : 'Markierung ' + hhmm(n.t)) + '</name>' + (n.text ? '<desc>' + esc(n.text) + '</desc>' : '') + '<sym>Pin, Blue</sym></wpt>\n'; }
   for (const k of rec.tasks || []) (k.decl || []).forEach(dl => { out += wpt(dl.E, dl.N, 'T' + k.nr + ' Deklaration ' + new Date(dl.t).toTimeString().slice(0, 5), 'Flag, Red'); });
+  if (!rec.track.length) return out + '</gpx>\n';
   out += '<trk><name>' + esc(rec.name) + '</name><trkseg>\n';
   for (const q of rec.track) { const p = utm2ll(q[0], q[1], z); out += '<trkpt lat="' + f6(p.lat) + '" lon="' + f6(p.lon) + '"><ele>' + (q[2] * FT).toFixed(1) + '</ele><time>' + new Date(q[3]).toISOString() + '</time></trkpt>\n'; }
   return out + '</trkseg></trk>\n</gpx>\n';
@@ -1855,6 +1944,7 @@ const logMsg = t => setText('log-msg', t);
 async function offerGpx(rec){
   if (!rec.track || rec.track.length < 2) { logMsg('Der Track ist noch zu kurz für einen Export.'); return; }
   const d = new Date(rec.date), stamp = d.getFullYear() + pad(d.getMonth() + 1, 2) + pad(d.getDate(), 2) + '-' + pad(d.getHours(), 2) + pad(d.getMinutes(), 2);
+  { saveFile('wettfahrt-' + stamp + '.gpx', buildGpx(rec), 'application/gpx+xml', logMsg); return; }
   if (!downloads) {
     if (window.claude) { logMsg('Speichern ist in dieser Ansicht nicht verfügbar.'); return; }
     const url = URL.createObjectURL(new Blob([buildGpx(rec)], { type:'application/gpx+xml' })), a = document.createElement('a');
@@ -1949,6 +2039,210 @@ function drawReplay(){
   ctx.beginPath(); ctx.arc(bx, by, 9, 0, 2 * Math.PI); ctx.fillStyle = colors.balloon; ctx.fill(); ctx.lineWidth = 3; ctx.strokeStyle = colors.panel; ctx.stroke();
 }
 
+/* ---------- Cursor ---------- */
+function drawCursor(){
+  const x = W / 2, y = H / 2;
+  for (const [col, lw] of [[colors.panel, 5], [colors.ink, 2]]) {
+    ctx.strokeStyle = col; ctx.lineWidth = lw;
+    ctx.beginPath(); ctx.arc(x, y, 11, 0, 2 * Math.PI); ctx.stroke();
+    seg(x - 24, y, x - 5, y); seg(x + 5, y, x + 24, y); seg(x, y - 24, x, y - 5); seg(x, y + 5, x, y + 24);
+  }
+}
+function updateCursorBar(show){
+  const el = $('#cursorbar');
+  if (!show) { el.hidden = true; return; }
+  el.hidden = false;
+  setText('cb-code', code44(view.cx, view.cy));
+  if (pos) { const dx = view.cx - pos.E, dy = view.cy - pos.N; setText('cb-info', fmtDist(Math.hypot(dx, dy)) + ' ' + fmtDeg(bearing(dx, dy)) + ' vom Ballon'); }
+  else setText('cb-info', '');
+}
+$('#cb-add').addEventListener('click', () => openTargetForm(null, { E:view.cx, N:view.cy }));
+
+/* ---------- Dateien speichern ---------- */
+async function saveFile(name, text, mime, msg){
+  if (downloads) {
+    try {
+      const gpx = name.endsWith('.gpx');
+      await downloads.save({ filename: gpx ? name.replace(/\.gpx$/, '.zip') : name, data: gpx ? makeZip(name, text) : new Blob([text], { type:mime }) });
+      msg('Gespeichert.');
+    } catch (e) { msg(e && e.code === 'declined' ? 'Speichern abgebrochen.' : e && e.code === 'rate_limited' ? 'Bitte kurz warten und erneut versuchen.' : 'Speichern war nicht möglich.'); }
+    return;
+  }
+  if (window.claude) { msg('Speichern ist in dieser Ansicht nicht verfügbar.'); return; }
+  const url = URL.createObjectURL(new Blob([text], { type:mime })), a = document.createElement('a');
+  a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 5000); msg('Gespeichert.');
+}
+const stampOf = ms => { const d = new Date(ms); return d.getFullYear() + pad(d.getMonth() + 1, 2) + pad(d.getDate(), 2) + '-' + pad(d.getHours(), 2) + pad(d.getMinutes(), 2); };
+
+/* ---------- Ziele importieren ---------- */
+function parseWaypoints(text){
+  const raw = [];
+  if (/<gpx[\s>]/i.test(text)) {
+    const doc = new DOMParser().parseFromString(text, 'application/xml');
+    doc.querySelectorAll('wpt, rtept').forEach((w, i) => {
+      const lat = parseFloat(w.getAttribute('lat')), lon = parseFloat(w.getAttribute('lon')); if (!isFinite(lat) || !isFinite(lon)) return;
+      const nm = w.querySelector('name'), ele = w.querySelector('ele');
+      raw.push({ lat, lon, name: nm && nm.textContent.trim() || 'WP ' + (i + 1), elevFt: ele ? Math.round(parseFloat(ele.textContent) / FT) : null });
+    });
+    return raw;
+  }
+  text.split(/\r?\n/).forEach((line, i) => {
+    line = line.trim(); if (!line || /^[#;]/.test(line)) return;
+    const sep = line.includes(';') ? ';' : line.includes('\t') ? '\t' : ',';
+    const tok = line.split(sep).map(x => x.trim().replace(/^"|"$/g, ''));
+    const num = x => { const v = sep === ',' ? x : x.replace(',', '.'); return /^-?\d+(\.\d+)?$/.test(v) ? parseFloat(v) : null; };
+    let pt = null, used = new Set();
+    for (let k = 0; k < tok.length && !pt; k++) {
+      if (/^\d{3,7}\s*\/\s*\d{3,7}$/.test(tok[k])) { const c = parseCoord(tok[k]); if (c) { pt = { E:c.E, N:c.N }; used.add(k); } }
+    }
+    for (let k = 0; k < tok.length - 1 && !pt; k++) {
+      const a = num(tok[k]), b = num(tok[k + 1]), sa = tok[k].replace(',', '.'), sb = tok[k + 1].replace(',', '.');
+      if (a == null || b == null) continue;
+      if (sa.includes('.') && sb.includes('.') && Math.abs(a) <= 90 && Math.abs(b) <= 180) { pt = { lat:a, lon:b }; used.add(k); used.add(k + 1); }
+      else if (/^\d{6}$/.test(tok[k]) && /^\d{7}$/.test(tok[k + 1])) { pt = { E:a, N:b }; used.add(k); used.add(k + 1); }
+      else if (/^\d{4}$/.test(tok[k]) && /^\d{4}$/.test(tok[k + 1])) { const c = parseCoord(tok[k] + '/' + tok[k + 1]); if (c) { pt = { E:c.E, N:c.N }; used.add(k); used.add(k + 1); } }
+    }
+    if (!pt) return;
+    const name = tok.find((x, k) => !used.has(k) && x && num(x) == null);
+    raw.push({ ...pt, name: name || 'WP ' + (raw.length + 1), elevFt:null });
+  });
+  return raw;
+}
+let importUndo = null;
+const tlMsg = t => setText('tl-msg', t);
+$('#tl-import').addEventListener('change', async e => {
+  const f = e.target.files && e.target.files[0]; e.target.value = ''; if (!f) return;
+  let raw;
+  try { raw = parseWaypoints(await f.text()); } catch (err) { raw = []; }
+  if (!raw.length) { tlMsg('In der Datei wurden keine Wegpunkte erkannt. Unterstützt werden GPX und CSV mit Name und Koordinate.'); $('#tl-undo').hidden = true; return; }
+  const st = S.settings, lons = raw.filter(r => r.lon != null).map(r => r.lon);
+  let note = '';
+  if (lons.length && st.zoneAuto) { const z = zoneOf(lons.reduce((a, b) => a + b, 0) / lons.length); if (z !== st.zone) { st.zone = z; note += ' UTM-Zone auf ' + z + ' gestellt.'; } }
+  const pts = raw.map(r => { if (r.lat != null) { const u = ll2utm(r.lat, r.lon, st.zone); return { name:r.name, E:u.E, N:u.N, elevFt:r.elevFt }; } return { name:r.name, E:r.E, N:r.N, elevFt:r.elevFt }; });
+  const cE = pts.reduce((a, p) => a + p.E, 0) / pts.length, cN = pts.reduce((a, p) => a + p.N, 0) / pts.length;
+  if (Math.hypot(cE - st.refE, cN - st.refN) > 50000) { st.refE = Math.round(cE); st.refN = Math.round(cN); note += ' Bezugspunkt auf das Gebiet der Wegpunkte gesetzt.'; }
+  importUndo = { targets:JSON.parse(JSON.stringify(S.targets)), zone:null };
+  let added = 0, upd = 0;
+  for (const p of pts) {
+    const ex = S.targets.find(t => t.name.toLowerCase() === p.name.toLowerCase());
+    if (ex) { ex.E = p.E; ex.N = p.N; if (p.elevFt != null) ex.elevFt = p.elevFt; upd++; }
+    else { S.targets.push({ id:uid(), name:p.name, E:p.E, N:p.N, radii:[], elevFt:p.elevFt }); added++; }
+  }
+  invalidatePlan(); save(); renderList(); requestDraw(); updateHud();
+  tlMsg(added + (added === 1 ? ' Ziel' : ' Ziele') + ' importiert' + (upd ? ', ' + upd + ' aktualisiert' : '') + '.' + note); $('#tl-undo').hidden = false;
+});
+$('#tl-undo').addEventListener('click', () => {
+  if (!importUndo) return;
+  S.targets = importUndo.targets; if (!S.targets.some(t => t.id === S.activeId)) S.activeId = null;
+  importUndo = null; invalidatePlan(); save(); renderList(); requestDraw(); updateHud();
+  tlMsg('Import rückgängig gemacht.'); $('#tl-undo').hidden = true;
+});
+$('#tl-export').addEventListener('click', () => {
+  if (!S.targets.length) { tlMsg('Es gibt noch keine Ziele zum Exportieren.'); return; }
+  saveFile('ziele-' + stampOf(Date.now()) + '.gpx', buildGpx({ name:'Ziele', date:Date.now(), track:[], targets:S.targets, tasks:[], notes:[], zone:S.settings.zone }), 'application/gpx+xml', tlMsg);
+});
+
+/* ---------- Sicherung ---------- */
+let backupPending = null;
+const bkMsg = t => setText('bk-msg', t);
+$('#bk-save').addEventListener('click', () => {
+  saveFile('wettfahrt-sicherung-' + stampOf(Date.now()) + '.json', JSON.stringify({ app:'wettfahrt', version:1, savedAt:Date.now(), data:S }), 'application/json', bkMsg);
+});
+$('#bk-load').addEventListener('change', async e => {
+  const f = e.target.files && e.target.files[0]; e.target.value = ''; if (!f) return;
+  try {
+    const j = JSON.parse(await f.text());
+    if (j.app !== 'wettfahrt' || !j.data || !j.data.settings || !Array.isArray(j.data.targets)) throw new Error('format');
+    backupPending = j.data;
+    bkMsg('Sicherung vom ' + new Date(j.savedAt).toLocaleString('de-AT', { dateStyle:'medium', timeStyle:'short' }) + ' mit ' + j.data.targets.length + ' Zielen und ' + (j.data.tasks || []).length + ' Tasks. Alles auf diesem Gerät damit ersetzen?');
+    $('#bk-apply').hidden = false;
+  } catch (err) { backupPending = null; $('#bk-apply').hidden = true; bkMsg('Diese Datei ist keine Sicherung der Wettfahrt-App.'); }
+});
+$('#bk-apply').addEventListener('click', () => {
+  if (!backupPending) return;
+  const base = defaults(), d = backupPending;
+  const merged = { ...base, ...d, settings:{ ...base.settings, ...(d.settings || {}) }, crew:{ ...base.crew, ...(d.crew || {}) },
+                   flight:{ ...base.flight, ...(d.flight || {}) }, map:{ ...base.map, ...(d.map || {}), has:false } };
+  try { localStorage.setItem(KEY, JSON.stringify(merged)); } catch (e) { bkMsg('Speichern war nicht möglich.'); return; }
+  location.reload();
+});
+
+/* ---------- Startcheck ---------- */
+let lastAcc = null, lastLon = null;
+const ckTicks = {};
+function checks(){
+  const st = S.settings, out = [], gps = st.mode === 'gps';
+  out.push({ ok: gps, txt:'Positionsquelle GPS', sub: gps ? 'GPS ist aktiv' : 'Die Simulation ist aktiv', act: gps ? null : ['Umstellen', () => { st.mode = 'gps'; save(); applyMode(); }] });
+  out.push({ ok: lastAcc != null && lastAcc <= 30, txt:'GPS-Genauigkeit', sub: lastAcc != null ? '±' + Math.round(lastAcc) + ' m' + (lastAcc > 30 ? ', besser unter 30 m' : '') : 'noch kein GPS-Signal' });
+  out.push({ ok: lastLon != null && zoneOf(lastLon) === st.zone, txt:'UTM-Zone ' + st.zone, sub: lastLon != null ? (zoneOf(lastLon) === st.zone ? 'passt zur Position' : 'Position liegt in Zone ' + zoneOf(lastLon)) : 'wird mit GPS geprüft' });
+  const refD = pos ? Math.hypot(pos.E - st.refE, pos.N - st.refN) : null;
+  out.push({ ok: refD != null && refD < 50000, txt:'Bezugspunkt', sub: refD != null ? fmtDist(refD) + ' entfernt' : 'noch keine Position', act: pos && refD >= 50000 ? ['Übernehmen', () => { st.refE = Math.round(pos.E); st.refN = Math.round(pos.N); save(); }] : null });
+  const altOk = !!st.altCheckedAt && Date.now() - st.altCheckedAt < 12 * 3600000;
+  out.push({ ok: altOk, txt:'Höhe abgeglichen', sub: altOk ? 'um ' + hhmm(st.altCheckedAt) + ', Korrektur ' + Math.round(st.altOffsetFt) + ' ft' : 'mit deinem Höhenmesser abgleichen', act: altOk ? null : ['Abgleichen', openAltSheet] });
+  out.push({ ok: st.groundFt > 0 || S.targets.some(t => t.elevFt != null), txt:'Bodenhöhe', sub:'allgemein ' + st.groundFt + ' ft' + (S.targets.some(t => t.elevFt != null) ? ', bei einzelnen Zielen eigene' : ''), act:['Einstellen', openers.settings] });
+  out.push({ ok: !!ckTicks.rates, manual:'rates', txt:'Steig- und Sinkrate, Grenzen', sub: fpmToMs(st.climbFpm) + ' / ' + fpmToMs(st.sinkFpm) + ' m/s, ' + st.minAltFt + ' bis ' + st.maxAltFt + ' ft' });
+  out.push({ ok: !!ckTicks.fall, manual:'fall', txt:'Fallgeschwindigkeit Marker', sub: String(st.fallMs).replace('.', ',') + ' m/s' });
+  out.push({ ok: S.tasks.length > 0, txt:'Task Sheet', sub: S.tasks.length ? S.tasks.length + (S.tasks.length === 1 ? ' Task' : ' Tasks') + (S.flight.launchFrom ? ', Start ' + S.flight.launchFrom + (S.flight.launchTo ? '–' + S.flight.launchTo : '') : ', Startfenster fehlt') : 'noch kein Task eingetragen', act:['Öffnen', openers.tasks] });
+  out.push({ ok: S.pz.length > 0 || !!ckTicks.pz, manual: S.pz.length ? null : 'pz', txt:'Sperrgebiete', sub: S.pz.length ? S.pz.length + ' eingetragen' : 'keine eingetragen, bestätigen falls es keine gibt' });
+  const nw = windProfile().length;
+  out.push({ ok: nw > 0, txt:'Winddaten', sub: nw ? nw + ' Höhen bekannt' : 'Pibal eintragen oder beim Steigen messen', act:['Wind', openers.wind] });
+  out.push({ ok: !!st.sound, txt:'Ansagen', sub: st.sound ? 'eingeschaltet' : 'ausgeschaltet', act: st.sound ? null : ['Einschalten', () => { st.sound = true; save(); setSoundUi(); say('Ansagen an'); }] });
+  if (S.map.has) out.push({ ok: !!S.map.cal, txt:'Wettbewerbskarte kalibriert', sub: S.map.cal ? 'passt zum Gitter' : 'noch nicht kalibriert', act: S.map.cal ? null : ['Karte', openers.map] });
+  out.push({ ok: !!wakeLock, txt:'Bildschirm bleibt an', sub: wakeLock ? 'aktiv' : 'einmal antippen, falls der Browser es erlaubt', act: wakeLock ? null : ['Aktivieren', () => keepAwake().then(renderCheck)] });
+  return out;
+}
+function renderCheck(){
+  const ul = $('#cklist'), list = checks(); ul.innerHTML = '';
+  const open = list.filter(c => !c.ok).length;
+  setText('ck-sum', open ? open + (open === 1 ? ' Punkt ist offen.' : ' Punkte sind offen.') : 'Alles bereit. Gute Fahrt!');
+  for (const c of list) {
+    const li = document.createElement('li');
+    const ic = document.createElement('span'); ic.className = 'ck-ic' + (c.ok ? ' ok' : ''); ic.textContent = c.ok ? '✓' : '!';
+    const meta = document.createElement('div'); meta.className = 'meta';
+    const nm = document.createElement('div'); nm.className = 'nm'; nm.textContent = c.txt;
+    const sub = document.createElement('div'); sub.className = 'sub'; sub.textContent = c.sub; meta.append(nm, sub);
+    li.append(ic, meta);
+    let act = c.act;
+    if (c.manual && !c.ok) act = ['Bestätigen', () => { ckTicks[c.manual] = true; }];
+    if (act) { const b = document.createElement('button'); b.className = 'btn small'; b.textContent = act[0]; b.addEventListener('click', () => { act[1](); setTimeout(renderCheck, 50); }); li.appendChild(b); }
+    ul.appendChild(li);
+  }
+  return open;
+}
+
+/* ---------- Ziel mit Pfeilen verschieben ---------- */
+let mpad = null, padStep = 100;
+function openPad(t){
+  mpad = { id:t.id, orig:{ E:t.E, N:t.N } }; $('#movepad').hidden = false; $('.mapwrap').classList.add('padopen'); updatePad();
+  padView(t, true);
+}
+function padView(t, force){
+  const ph = $('#movepad').offsetHeight || 220, [x, y] = w2s(t.E, t.N), freeH = H - ph - 16;
+  if (force || y > freeH - 30 || y < 30 || x < 20 || x > W - railW()) {
+    setFollow(false); view.cx = t.E + railW() / 2 / view.s; view.cy = t.N - (ph / 2 + 8) / view.s;
+  }
+  requestDraw();
+}
+function closePad(){ mpad = null; $('#movepad').hidden = true; $('.mapwrap').classList.remove('padopen'); requestDraw(); }
+function updatePad(){
+  const t = mpad && S.targets.find(x => x.id === mpad.id); if (!t) { closePad(); return; }
+  setText('mp-name', t.name); setText('mp-code', code44(t.E, t.N));
+  const dE = t.E - mpad.orig.E, dN = t.N - mpad.orig.N, dd = Math.hypot(dE, dN);
+  setText('mp-moved', dd > 1 ? 'verschoben um ' + fmtDist(dd) + ' ' + fmtDeg(bearing(dE, dN)) : 'Pfeil antippen, das Ziel springt um einen Schritt.');
+  document.querySelectorAll('#mp-step button').forEach(b => b.setAttribute('aria-pressed', +b.dataset.s === padStep));
+}
+function padChanged(){ save(); invalidatePlan(); updatePad(); const t = mpad && S.targets.find(x => x.id === mpad.id); if (t) padView(t, false); updateHud(); }
+document.querySelectorAll('.mp-grid button[data-d]').forEach(b => b.addEventListener('click', () => {
+  const t = mpad && S.targets.find(x => x.id === mpad.id); if (!t) return;
+  const [dx, dy] = b.dataset.d.split(',').map(Number);
+  t.E += dx * padStep; t.N += dy * padStep; padChanged();
+}));
+document.querySelectorAll('#mp-step button').forEach(b => b.addEventListener('click', () => { padStep = +b.dataset.s; updatePad(); }));
+$('#mp-undo').addEventListener('click', () => { const t = mpad && S.targets.find(x => x.id === mpad.id); if (!t) return; t.E = mpad.orig.E; t.N = mpad.orig.N; padChanged(); });
+$('#mp-done').addEventListener('click', closePad);
+$('#mp-edit').addEventListener('click', () => { const t = mpad && S.targets.find(x => x.id === mpad.id); closePad(); if (t) openTargetForm(t); });
+
 /* ---------- Markierungen ---------- */
 let editNote = null;
 const hhmmss = ms => { const d = new Date(ms); return pad(d.getHours(), 2) + ':' + pad(d.getMinutes(), 2) + ':' + pad(d.getSeconds(), 2); };
@@ -2023,8 +2317,8 @@ function planSteps(p, t){
 }
 function profileSvg(p){
   const path = p.path; if (!path || path.length < 2) return '';
-  const alts = path.map(q => q[2]), lo = Math.min(...alts), hi = Math.max(...alts), pad = Math.max(100, (hi - lo) * .15);
-  const a0 = lo - pad, a1 = hi + pad, X = i => 40 + i / (path.length - 1) * 290, Y = a => 112 - (a - a0) / (a1 - a0) * 100;
+  const alts = path.map(q => q[2]), lo = Math.min(...alts), hi = Math.max(...alts), mpad = Math.max(100, (hi - lo) * .15);
+  const a0 = lo - mpad, a1 = hi + mpad, X = i => 40 + i / (path.length - 1) * 290, Y = a => 112 - (a - a0) / (a1 - a0) * 100;
   const col = p.reachable ? 'var(--ok)' : 'var(--ink-2)';
   let pts = path.map((q, i) => X(i).toFixed(1) + ',' + Y(q[2]).toFixed(1)).join(' ');
   let out = '<line x1="40" y1="112" x2="330" y2="112" stroke="var(--panel-edge)"/><line x1="40" y1="12" x2="40" y2="112" stroke="var(--panel-edge)"/>';
@@ -2105,7 +2399,7 @@ $('#stat-alt').addEventListener('keydown', e => { if (e.key === 'Enter' || e.key
 $('#st-alt').addEventListener('click', openAltSheet);
 $('#al-ok').addEventListener('click', () => {
   const v = numOrNull($('#al-val').value); if (v == null || !pos || pos.rawAltFt == null) return;
-  S.settings.altOffsetFt = v - pos.rawAltFt; pos.altFt = v; save(); invalidatePlan(); closeSheets(); updateHud(); requestDraw();
+  S.settings.altOffsetFt = v - pos.rawAltFt; S.settings.altCheckedAt = Date.now(); pos.altFt = v; save(); invalidatePlan(); closeSheets(); updateHud(); requestDraw();
 });
 $('#al-reset').addEventListener('click', () => {
   S.settings.altOffsetFt = 0; if (pos && pos.rawAltFt != null) pos.altFt = pos.rawAltFt; save(); invalidatePlan(); openAltSheet(); updateHud();
@@ -2197,6 +2491,7 @@ function updateHud(){
   boxDrop.hidden = !showDrop; boxAlt.hidden = showDrop && !wide;
   announce(t, d, p, dr);
   if (p !== planShown && $('#sheet-plan').classList.contains('open')) renderPlan();
+  if ($('#sheet-check').classList.contains('open')) renderCheck();
 }
 function updateAlert(m){
   const el = $('#alert'), st = pzStatus(m);
@@ -2316,15 +2611,17 @@ function confirmBtn(btn, label, fn){
 /* Menü */
 const openers = {
   tasks: () => { renderTasks(); openSheet('#sheet-tasks'); },
-  list: () => { renderList(); openSheet('#sheet-list'); },
+  list: () => { tlMsg(''); $('#tl-undo').hidden = true; renderList(); openSheet('#sheet-list'); },
   wind: () => { renderWind(); openSheet('#sheet-wind'); },
   pz: () => { renderPz(); openSheet('#sheet-pz'); },
   map: () => { renderMapSheet(); openSheet('#sheet-map'); },
   log: () => { logMsg(''); renderLog(); openSheet('#sheet-log'); },
   crew: () => { renderCrew(); openSheet('#sheet-crew'); },
-  settings: () => { fillSettings(); openSheet('#sheet-settings'); }
+  check: () => { renderCheck(); openSheet('#sheet-check'); },
+  settings: () => { bkMsg(''); $('#bk-apply').hidden = true; fillSettings(); openSheet('#sheet-settings'); }
 };
 $('#btn-menu').addEventListener('click', () => {
+  { const o = checks().filter(c => !c.ok).length; setText('mt-check', o ? o + (o === 1 ? ' Punkt offen' : ' Punkte offen') : 'alles bereit'); }
   setText('mt-tasks', S.tasks.length ? S.tasks.length + (S.tasks.length === 1 ? ' Task' : ' Tasks') : 'Tasks und Zeitfenster');
   setText('mt-list', S.targets.length + (S.targets.length === 1 ? ' Ziel' : ' Ziele'));
   const n = windProfile().length; setText('mt-wind', n ? n + ' Höhen bekannt' : 'Profil und Pibal');
@@ -2387,6 +2684,7 @@ $('#tf-save').addEventListener('click', () => {
   invalidatePlan(); save(); closeSheets(); requestDraw(); updateHud();
 });
 $('#tf-del').addEventListener('click', () => {
+  if (mpad && mpad.id === editId) closePad();
   S.targets = S.targets.filter(t => t.id !== editId);
   S.tasks.forEach(k => { k.targets = k.targets.filter(id => id !== editId); });
   if (S.activeId === editId) S.activeId = null;
@@ -2645,7 +2943,9 @@ document.querySelectorAll('[data-theme-set]').forEach(b => b.addEventListener('c
 /* Werkzeuge */
 $('#tool-add').addEventListener('click', () => setTool('add'));
 $('#tool-measure').addEventListener('click', () => setTool('measure'));
+$('#hint-cancel').addEventListener('click', () => setTool(tool));
 $('#hint-done').addEventListener('click', () => {
+  if (tool === 'move') { const t = S.targets.find(x => x.id === moveId); if (t) { t.E = view.cx; t.N = view.cy; save(); invalidatePlan(); } setTool('move'); updateHud(); return; }
   if (tool === 'pz') { setTool('pz'); finishPzDraft(); return; }
   setTool(tool);
 });
