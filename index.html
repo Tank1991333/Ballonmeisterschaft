@@ -188,23 +188,26 @@ input[type=range]{padding:0;border:0;background:none;accent-color:var(--ink)}
 .checkrow{display:flex;gap:.6rem;align-items:center;font-weight:600;margin:.2rem 0 .7rem}
 .checkrow input{width:1.3rem;height:1.3rem;accent-color:var(--ink)}
 .wtab td.old{color:var(--warn)}
-.movepad{position:absolute;left:.65rem;right:4.4rem;bottom:.65rem;background:var(--panel);border:1.5px solid var(--panel-edge);border-radius:14px;padding:.55rem .6rem;box-shadow:0 6px 20px rgba(0,0,0,.18)}
-.mp-head{display:flex;align-items:center;gap:.4rem;margin-bottom:.45rem}
-.mp-t{flex:1;min-width:0;line-height:1.15}
-.mp-t b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.mp-t span{font-family:var(--num);font-size:1.05rem;color:var(--ink-2)}
-.mp-body{display:flex;gap:.6rem;align-items:center}
-.mp-grid{display:grid;grid-template-columns:repeat(3,48px);grid-template-rows:repeat(3,48px);gap:5px;flex:0 0 auto}
-.mp-grid button{border:1.5px solid var(--panel-edge);background:var(--paper-2);border-radius:10px;font-size:1.35rem;font-weight:700;padding:0}
+.movepad{position:absolute;left:.65rem;right:4.4rem;bottom:.65rem;display:flex;gap:.55rem;align-items:stretch;background:var(--panel);border:1.5px solid var(--panel-edge);border-radius:12px;padding:.45rem;box-shadow:0 6px 18px rgba(0,0,0,.16)}
+.mp-grid{display:grid;grid-template-columns:repeat(3,38px);grid-template-rows:repeat(3,38px);gap:4px;flex:0 0 auto}
+.mp-grid button{border:1.5px solid var(--panel-edge);background:var(--paper-2);border-radius:8px;font-size:1.1rem;font-weight:700;padding:0}
 .mp-grid button:active{background:var(--ink);color:var(--panel)}
-#mp-undo{font-size:1.15rem;color:var(--ink-2)}
-.mp-side{flex:1;display:flex;flex-direction:column;gap:.35rem;min-width:0}
-.mp-side .mp-l{font-size:.8rem;color:var(--ink-2)}
-.mp-side small{font-size:.82rem;color:var(--ink-2);line-height:1.25}
-.seg.vert{flex-direction:column}
-.seg.vert button{padding:.5rem}
-:root.big .mp-grid{grid-template-columns:repeat(3,58px);grid-template-rows:repeat(3,58px)}
+.mp-grid button:disabled{opacity:.3}
+#mp-undo{font-size:1rem;color:var(--ink-2)}
+.mp-side{flex:1;display:flex;flex-direction:column;gap:.3rem;min-width:0;justify-content:space-between}
+.mp-t{line-height:1.1;min-width:0}
+.mp-t b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:.95rem}
+.mp-t span{font-family:var(--num);font-size:1rem;color:var(--ink-2)}
+.mp-step button{padding:.3rem .15rem;font-size:.82rem}
+.mp-side small{font-size:.78rem;color:var(--ink-2);line-height:1.2}
+.mp-btns{display:flex;gap:.3rem}
+.mp-btns .btn{flex:1;padding:.35rem .4rem;font-size:.85rem}
+:root.big .mp-grid{grid-template-columns:repeat(3,50px);grid-template-rows:repeat(3,50px)}
 :root.big .movepad{right:5.6rem}
+.symgrid{display:flex;flex-wrap:wrap;gap:.35rem}
+.symgrid button{width:46px;height:46px;border:1.5px solid var(--panel-edge);background:var(--paper-2);border-radius:9px;display:grid;place-items:center;padding:0}
+.symgrid button[aria-pressed="true"]{border-color:var(--ink);box-shadow:0 0 0 2px var(--ink)}
+.symgrid svg{width:26px;height:26px}
 .mapwrap.padopen .altctl{display:none !important}
 .cursorbar{display:flex;align-items:center;gap:.5rem;background:var(--panel);border:1.5px solid var(--panel-edge);border-radius:12px;padding:.4rem .45rem .4rem .7rem}
 .cb-t{flex:1;min-width:0;font-family:var(--num);font-size:1.1rem;font-weight:700;line-height:1.15}
@@ -298,22 +301,16 @@ input[type=range]{padding:0;border:0;background:none;accent-color:var(--ink)}
     <div class="rp-info" id="rp-info"></div>
   </div>
   <div class="movepad" id="movepad" hidden>
-    <div class="mp-head">
-      <div class="mp-t"><b id="mp-name"></b><span id="mp-code"></span></div>
-      <button class="btn small" id="mp-edit">Bearbeiten</button>
-      <button class="btn small primary" id="mp-done" style="flex:0 0 auto">Fertig</button>
+    <div class="mp-grid">
+      <button data-d="-1,1" aria-label="Nach Nordwesten">↖</button><button data-d="0,1" aria-label="Nach Norden">↑</button><button data-d="1,1" aria-label="Nach Nordosten">↗</button>
+      <button data-d="-1,0" aria-label="Nach Westen">←</button><button id="mp-undo" aria-label="Zurück zur Ausgangsposition" title="Zurück zur Ausgangsposition">↺</button><button data-d="1,0" aria-label="Nach Osten">→</button>
+      <button data-d="-1,-1" aria-label="Nach Südwesten">↙</button><button data-d="0,-1" aria-label="Nach Süden">↓</button><button data-d="1,-1" aria-label="Nach Südosten">↘</button>
     </div>
-    <div class="mp-body">
-      <div class="mp-grid">
-        <button data-d="-1,1" aria-label="Nach Nordwesten">↖</button><button data-d="0,1" aria-label="Nach Norden">↑</button><button data-d="1,1" aria-label="Nach Nordosten">↗</button>
-        <button data-d="-1,0" aria-label="Nach Westen">←</button><button id="mp-undo" aria-label="Zurück zur Ausgangsposition" title="Zurück zur Ausgangsposition">↺</button><button data-d="1,0" aria-label="Nach Osten">→</button>
-        <button data-d="-1,-1" aria-label="Nach Südwesten">↙</button><button data-d="0,-1" aria-label="Nach Süden">↓</button><button data-d="1,-1" aria-label="Nach Südosten">↘</button>
-      </div>
-      <div class="mp-side">
-        <span class="mp-l">Schritt</span>
-        <div class="seg vert" id="mp-step"><button data-s="10">10 m</button><button data-s="100">100 m</button><button data-s="1000">1 km</button></div>
-        <small id="mp-moved"></small>
-      </div>
+    <div class="mp-side">
+      <div class="mp-t"><b id="mp-name"></b><span id="mp-code"></span></div>
+      <div class="seg mp-step" id="mp-step"><button data-s="10">10 m</button><button data-s="100">100 m</button><button data-s="1000">1 km</button></div>
+      <small id="mp-moved"></small>
+      <div class="mp-btns"><button class="btn small" id="mp-edit">Bearbeiten</button><button class="btn small primary" id="mp-done">Fertig</button></div>
     </div>
   </div>
   <div class="altctl" id="altctl" hidden>
@@ -437,6 +434,8 @@ input[type=range]{padding:0;border:0;background:none;accent-color:var(--ink)}
       <label class="field" style="flex:0 0 8.5rem"><span>Bodenhöhe ft</span><input id="tf-elev" class="num" inputmode="numeric" placeholder="optional"></label>
     </div>
     <p class="note">Mehrere Radien mit Komma trennen, ohne Einheit in Metern. Die Bodenhöhe am Ziel verbessert die Abwurfberechnung.</p>
+    <div class="field" style="margin-top:.8rem"><span>Symbol</span><div class="symgrid" id="tf-sym"></div></div>
+    <label class="checkrow"><input type="checkbox" id="tf-lock"> Gesperrt, nicht verschiebbar</label>
     <h3>Marker-Ziel</h3>
     <label class="checkrow"><input type="checkbox" id="tf-ga"> Endanflug am Boden planen</label>
     <div class="row">
@@ -460,12 +459,20 @@ input[type=range]{padding:0;border:0;background:none;accent-color:var(--ink)}
   <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="tl-title">
     <h2 id="tl-title">Ziele</h2>
     <ul class="tlist" id="tlist"></ul>
+    <h3>Import</h3>
+    <div class="row" style="align-items:center">
+      <label class="checkrow" style="margin:0"><input type="checkbox" id="imp-lock"> Importierte Punkte sperren</label>
+      <label class="field" style="margin:0;flex:0 0 9.5rem"><select id="imp-sym" aria-label="Symbol für importierte Punkte"></select></label>
+    </div>
     <div class="btns">
       <label class="btn filebtn" style="flex:1">Ziele importieren<input type="file" id="tl-import" accept=".gpx,.csv,.txt,.wpt" hidden></label>
       <button class="btn" id="tl-export" style="flex:1">Ziele als GPX</button>
     </div>
     <div class="row" style="align-items:center;margin-top:.4rem"><p class="note" id="tl-msg" style="margin:0"></p><button class="btn small" id="tl-undo" style="flex:0 0 auto" hidden>Rückgängig</button></div>
     <p class="note">Import aus GPX oder CSV, z. B. von der Wettbewerbsleitung. Die CSV braucht je Zeile einen Namen und eine Koordinate als 4/4, 6/7 oder Breite und Länge. Ziele mit gleichem Namen werden aktualisiert. Tippe ein Ziel auf der Karte an, um es mit den Pfeilen zu verschieben.</p>
+    <h3>Nach der Fahrt</h3>
+    <button class="btn danger" id="tl-reset" style="width:100%">Fahrt-Punkte löschen</button>
+    <p class="note" id="tl-reset-note">Löscht alle nicht gesperrten Ziele, den Track, die Markierungen sowie Marker und Deklarationen der Tasks. Gesperrte Punkte, Sperrgebiete, Tasks und Einstellungen bleiben. Speichere die Fahrt vorher im Logbuch, wenn du sie behalten willst.</p>
     <div class="btns">
       <button class="btn" data-close>Schließen</button>
       <button class="btn primary" id="tl-new">Ziel per Koordinate</button>
@@ -799,7 +806,7 @@ const defaults = () => ({
               simFrom:250, simKmh:14, simAltFt:1500, simAltTarget:1500, simRate:1, theme:'auto',
               groundFt:0, fallMs:5, pzLook:300,
               climbFpm:500, sinkFpm:500, minAltFt:500, maxAltFt:5000, tolM:100,
-              lowFt:50, minFinalM:500, sinkOnly:true, altOffsetFt:0, autoApproachM:3000, sound:false, big:false, windMaxAge:45 },
+              lowFt:50, minFinalM:500, sinkOnly:true, importLock:true, importSym:'x', altOffsetFt:0, autoApproachM:3000, sound:false, big:false, windMaxAge:45 },
   crew: { role:'off', status:'air' },
   targets: [], activeId: null, track: [], simPos: null,
   tasks: [], activeTaskId: null, flight: { launchFrom:'', launchTo:'' },
@@ -1330,6 +1337,48 @@ function drawTrack(){
   ctx.strokeStyle = colors.track; ctx.lineWidth = 2.5; ctx.lineJoin = 'round'; ctx.globalAlpha = .85; ctx.stroke(); ctx.globalAlpha = 1;
 }
 function cross(x, y, k){ seg(x - k, y - k, x + k, y + k); seg(x + k, y - k, x - k, y + k); }
+const SYMS = [['x', 'Kreuz'], ['o', 'Kreis'], ['tri', 'Dreieck'], ['sq', 'Quadrat'], ['flag', 'Fahne'], ['star', 'Stern'], ['dot', 'Punkt']];
+function symPath(sym, x, y, k){
+  ctx.beginPath();
+  if (sym === 'tri') { ctx.moveTo(x, y - k * 1.15); ctx.lineTo(x + k, y + k * .8); ctx.lineTo(x - k, y + k * .8); ctx.closePath(); }
+  else if (sym === 'sq') ctx.rect(x - k * .85, y - k * .85, k * 1.7, k * 1.7);
+  else if (sym === 'dot') ctx.arc(x, y, k * .6, 0, 2 * Math.PI);
+  else if (sym === 'star') { for (let i = 0; i < 10; i++) { const r = i % 2 ? k * .48 : k * 1.15, a = -Math.PI / 2 + i * Math.PI / 5; i ? ctx.lineTo(x + r * Math.cos(a), y + r * Math.sin(a)) : ctx.moveTo(x + r * Math.cos(a), y + r * Math.sin(a)); } ctx.closePath(); }
+  else if (sym === 'flag') { ctx.moveTo(x - k * .55, y - k * 1.2); ctx.lineTo(x + k * .95, y - k * .7); ctx.lineTo(x - k * .55, y - k * .15); ctx.closePath(); }
+}
+function drawSymbol(sym, x, y, k, strong){
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  if (!sym || sym === 'x') {
+    ctx.strokeStyle = colors['target-ink']; ctx.lineWidth = strong ? 8.5 : 6; cross(x, y, k);
+    ctx.strokeStyle = colors.target; ctx.lineWidth = strong ? 5 : 3.2; cross(x, y, k);
+  } else if (sym === 'o') {
+    ctx.beginPath(); ctx.arc(x, y, k, 0, 2 * Math.PI);
+    ctx.strokeStyle = colors['target-ink']; ctx.lineWidth = strong ? 7.5 : 5.5; ctx.stroke();
+    ctx.strokeStyle = colors.target; ctx.lineWidth = strong ? 4 : 3; ctx.stroke();
+    dot(x, y, 2.5, colors['target-ink']);
+  } else {
+    if (sym === 'flag') { ctx.strokeStyle = colors['target-ink']; ctx.lineWidth = 2.5; seg(x - k * .55, y + k, x - k * .55, y - k * 1.2); }
+    symPath(sym, x, y, k); ctx.fillStyle = colors.target; ctx.fill();
+    ctx.strokeStyle = colors['target-ink']; ctx.lineWidth = strong ? 2.5 : 2; ctx.stroke();
+  }
+  ctx.lineCap = 'butt';
+}
+function drawLock(x, y){
+  ctx.strokeStyle = colors['ink-2']; ctx.lineWidth = 1.6;
+  ctx.beginPath(); ctx.arc(x + 4, y - 6, 2.8, Math.PI, 0); ctx.stroke();
+  ctx.fillStyle = colors['ink-2']; ctx.fillRect(x, y - 6, 8, 6.5);
+}
+function symSvg(sym){
+  const c = 'var(--target)', ink = 'var(--target-ink)';
+  const m = { x:'<path d="M5 5L21 21M21 5L5 21" stroke="' + ink + '" stroke-width="6" stroke-linecap="round"/><path d="M5 5L21 21M21 5L5 21" stroke="' + c + '" stroke-width="3.2" stroke-linecap="round"/>',
+    o:'<circle cx="13" cy="13" r="8.5" fill="none" stroke="' + ink + '" stroke-width="5.5"/><circle cx="13" cy="13" r="8.5" fill="none" stroke="' + c + '" stroke-width="3"/><circle cx="13" cy="13" r="2.4" fill="' + ink + '"/>',
+    tri:'<path d="M13 3L23 21H3Z" fill="' + c + '" stroke="' + ink + '" stroke-width="2" stroke-linejoin="round"/>',
+    sq:'<rect x="5" y="5" width="16" height="16" fill="' + c + '" stroke="' + ink + '" stroke-width="2"/>',
+    flag:'<path d="M7 23V3" stroke="' + ink + '" stroke-width="2.5" stroke-linecap="round"/><path d="M7 3L21 8L7 13Z" fill="' + c + '" stroke="' + ink + '" stroke-width="2" stroke-linejoin="round"/>',
+    star:'<path d="M13 2l3.2 7 7.5.6-5.7 5 1.8 7.4L13 18.2 6.2 22l1.8-7.4-5.7-5 7.5-.6z" fill="' + c + '" stroke="' + ink + '" stroke-width="1.8" stroke-linejoin="round"/>',
+    dot:'<circle cx="13" cy="13" r="6.5" fill="' + c + '" stroke="' + ink + '" stroke-width="2"/>' };
+  return '<svg viewBox="0 0 26 26" aria-hidden="true">' + (m[sym] || m.x) + '</svg>';
+}
 function drawTargets(){
   const act = frame.t, task = activeTask(), mmaOf = {};
   for (const k of S.tasks) if (k.mma) for (const id of k.targets) mmaOf[id] = Math.max(mmaOf[id] || 0, k.mma);
@@ -1337,10 +1386,10 @@ function drawTargets(){
     const [x, y] = w2s(t.E, t.N), on = act && t.id === act.id;
     if (!on) {
       if (layer === 'anflug') continue;
-      ctx.globalAlpha = task && !task.targets.includes(t.id) ? .4 : .85; ctx.lineCap = 'round';
-      ctx.strokeStyle = colors['target-ink']; ctx.lineWidth = 5; cross(x, y, 7);
-      ctx.strokeStyle = colors.target; ctx.lineWidth = 2.5; cross(x, y, 7);
-      ctx.lineCap = 'butt'; label(t.name, x + 12, y + 4, { size:12, weight:600 });
+      ctx.globalAlpha = task && !task.targets.includes(t.id) ? .4 : .85;
+      drawSymbol(t.sym, x, y, 7, false);
+      label(t.name, x + 12, y + 4, { size:12, weight:600 });
+      if (t.locked) { ctx.font = '600 12px ' + FONT_NUM; drawLock(x + 14 + ctx.measureText(t.name).width, y + 4); }
       ctx.globalAlpha = 1; continue;
     }
     for (const r of t.radii || []) {
@@ -1367,11 +1416,10 @@ function drawTargets(){
       label('Boden ' + fmtDeg(t.gw.from) + ' ' + String(t.gw.kmh).replace('.', ',') + ' km/h', x + 21, y + 28, { size:12, color:colors['ink-2'] });
     }
     if (mpad && mpad.id === t.id) { ctx.beginPath(); ctx.arc(x, y, 22, 0, 2 * Math.PI); ctx.strokeStyle = colors.ink; ctx.lineWidth = 2; ctx.setLineDash([4, 4]); ctx.stroke(); ctx.setLineDash([]); }
-    const k = on ? 12 : 9; ctx.lineCap = 'round';
-    ctx.strokeStyle = colors['target-ink']; ctx.lineWidth = on ? 8.5 : 6.5; cross(x, y, k);
-    ctx.strokeStyle = colors.target; ctx.lineWidth = on ? 5 : 3.5; cross(x, y, k);
-    ctx.lineCap = 'butt';
+    const k = on ? 12 : 9;
+    drawSymbol(t.sym, x, y, k, on);
     label(t.name, x + k + 7, y - 2, { size:on ? 15 : 13, weight:700 });
+    if (t.locked) { ctx.font = '700 ' + (on ? 15 : 13) + 'px ' + FONT_NUM; drawLock(x + k + 10 + ctx.measureText(t.name).width, y - 2); }
     label(code44(t.E, t.N), x + k + 7, y + 13, { size:12, color:colors['ink-2'] });
     ctx.globalAlpha = 1;
   }
@@ -1513,7 +1561,7 @@ cv.addEventListener('pointerdown', e => {
     gesture = { type:'pan', sx:e.offsetX, sy:e.offsetY, t:performance.now(), moved:false, cx:view.cx, cy:view.cy };
     if (!tool && !replay) {
       const tol = S.settings.big ? 46 : 30, x = e.offsetX, y = e.offsetY;
-      const hit = S.targets.find(t => { const [tx, ty] = w2s(t.E, t.N); return Math.hypot(tx - x, ty - y) < tol; });
+      const hit = S.targets.find(t => { if (t.locked) return false; const [tx, ty] = w2s(t.E, t.N); return Math.hypot(tx - x, ty - y) < tol; });
       if (hit) { const g = gesture; g.lp = setTimeout(() => { if (gesture === g && !g.moved && ptrs.size === 1) { g.type = 'drag'; g.id = hit.id; setFollow(false); try { navigator.vibrate && navigator.vibrate(40); } catch (err) {} } }, 450); }
     }
   }
@@ -2031,7 +2079,7 @@ function drawReplay(){
   ctx.globalAlpha = 1; ctx.lineCap = 'butt';
   for (const t of f.targets || []) {
     const [x, y] = w2s(t.E, t.N);
-    ctx.lineCap = 'round'; ctx.strokeStyle = colors['target-ink']; ctx.lineWidth = 5; cross(x, y, 7); ctx.strokeStyle = colors.target; ctx.lineWidth = 2.5; cross(x, y, 7); ctx.lineCap = 'butt';
+    drawSymbol(t.sym, x, y, 7, false);
     label(t.name, x + 12, y + 4, { size:12 });
   }
   for (const k of f.tasks || []) (k.marks || []).forEach((mk, i) => { const [x, y] = w2s(mk.E, mk.N); ctx.fillStyle = colors.ink; ctx.fillRect(x - 5, y - 5, 10, 10); label('T' + k.nr + ' M' + (i + 1), x + 8, y - 6, { size:11, weight:700 }); });
@@ -2126,11 +2174,27 @@ $('#tl-import').addEventListener('change', async e => {
   let added = 0, upd = 0;
   for (const p of pts) {
     const ex = S.targets.find(t => t.name.toLowerCase() === p.name.toLowerCase());
-    if (ex) { ex.E = p.E; ex.N = p.N; if (p.elevFt != null) ex.elevFt = p.elevFt; upd++; }
-    else { S.targets.push({ id:uid(), name:p.name, E:p.E, N:p.N, radii:[], elevFt:p.elevFt }); added++; }
+    if (ex) { ex.E = p.E; ex.N = p.N; if (p.elevFt != null) ex.elevFt = p.elevFt; ex.locked = st.importLock; ex.sym = st.importSym; upd++; }
+    else { S.targets.push({ id:uid(), name:p.name, E:p.E, N:p.N, radii:[], elevFt:p.elevFt, locked:st.importLock, sym:st.importSym }); added++; }
   }
   invalidatePlan(); save(); renderList(); requestDraw(); updateHud();
   tlMsg(added + (added === 1 ? ' Ziel' : ' Ziele') + ' importiert' + (upd ? ', ' + upd + ' aktualisiert' : '') + '.' + note); $('#tl-undo').hidden = false;
+});
+$('#imp-sym').innerHTML = SYMS.map(([k, n]) => '<option value="' + k + '">Symbol: ' + n + '</option>').join('');
+$('#imp-lock').addEventListener('change', e => { S.settings.importLock = e.target.checked; save(); });
+$('#imp-sym').addEventListener('change', e => { S.settings.importSym = e.target.value; save(); });
+$('#tl-reset').addEventListener('click', e => {
+  const n = S.targets.filter(t => !t.locked).length;
+  confirmBtn(e.currentTarget, 'Fahrt-Punkte löschen', () => {
+    if (mpad) closePad();
+    const keep = new Set(S.targets.filter(t => t.locked).map(t => t.id));
+    S.targets = S.targets.filter(t => keep.has(t.id));
+    if (!keep.has(S.activeId)) S.activeId = null;
+    S.tasks.forEach(k => { k.targets = k.targets.filter(id => keep.has(id)); k.marks = []; k.decl = []; });
+    S.activeTaskId = null; S.track = []; S.notes = [];
+    invalidatePlan(); save(); renderList(); requestDraw(); updateHud();
+    tlMsg(n + (n === 1 ? ' Punkt' : ' Punkte') + ' gelöscht, ' + keep.size + ' gesperrte behalten.'); $('#tl-undo').hidden = true;
+  });
 });
 $('#tl-undo').addEventListener('click', () => {
   if (!importUndo) return;
@@ -2228,18 +2292,20 @@ function closePad(){ mpad = null; $('#movepad').hidden = true; $('.mapwrap').cla
 function updatePad(){
   const t = mpad && S.targets.find(x => x.id === mpad.id); if (!t) { closePad(); return; }
   setText('mp-name', t.name); setText('mp-code', code44(t.E, t.N));
+  document.querySelectorAll('.mp-grid button').forEach(b => { b.disabled = !!t.locked; });
+  if (t.locked) { setText('mp-moved', 'Gesperrt, nicht verschiebbar.'); document.querySelectorAll('#mp-step button').forEach(b => b.setAttribute('aria-pressed', +b.dataset.s === padStep)); return; }
   const dE = t.E - mpad.orig.E, dN = t.N - mpad.orig.N, dd = Math.hypot(dE, dN);
   setText('mp-moved', dd > 1 ? 'verschoben um ' + fmtDist(dd) + ' ' + fmtDeg(bearing(dE, dN)) : 'Pfeil antippen, das Ziel springt um einen Schritt.');
   document.querySelectorAll('#mp-step button').forEach(b => b.setAttribute('aria-pressed', +b.dataset.s === padStep));
 }
 function padChanged(){ save(); invalidatePlan(); updatePad(); const t = mpad && S.targets.find(x => x.id === mpad.id); if (t) padView(t, false); updateHud(); }
 document.querySelectorAll('.mp-grid button[data-d]').forEach(b => b.addEventListener('click', () => {
-  const t = mpad && S.targets.find(x => x.id === mpad.id); if (!t) return;
+  const t = mpad && S.targets.find(x => x.id === mpad.id); if (!t || t.locked) return;
   const [dx, dy] = b.dataset.d.split(',').map(Number);
   t.E += dx * padStep; t.N += dy * padStep; padChanged();
 }));
 document.querySelectorAll('#mp-step button').forEach(b => b.addEventListener('click', () => { padStep = +b.dataset.s; updatePad(); }));
-$('#mp-undo').addEventListener('click', () => { const t = mpad && S.targets.find(x => x.id === mpad.id); if (!t) return; t.E = mpad.orig.E; t.N = mpad.orig.N; padChanged(); });
+$('#mp-undo').addEventListener('click', () => { const t = mpad && S.targets.find(x => x.id === mpad.id); if (!t || t.locked) return; t.E = mpad.orig.E; t.N = mpad.orig.N; padChanged(); });
 $('#mp-done').addEventListener('click', closePad);
 $('#mp-edit').addEventListener('click', () => { const t = mpad && S.targets.find(x => x.id === mpad.id); closePad(); if (t) openTargetForm(t); });
 
@@ -2611,7 +2677,7 @@ function confirmBtn(btn, label, fn){
 /* Menü */
 const openers = {
   tasks: () => { renderTasks(); openSheet('#sheet-tasks'); },
-  list: () => { tlMsg(''); $('#tl-undo').hidden = true; renderList(); openSheet('#sheet-list'); },
+  list: () => { tlMsg(''); $('#tl-undo').hidden = true; $('#imp-lock').checked = !!S.settings.importLock; $('#imp-sym').value = S.settings.importSym || 'x'; renderList(); openSheet('#sheet-list'); },
   wind: () => { renderWind(); openSheet('#sheet-wind'); },
   pz: () => { renderPz(); openSheet('#sheet-pz'); },
   map: () => { renderMapSheet(); openSheet('#sheet-map'); },
@@ -2650,6 +2716,8 @@ function openTargetForm(t, at){
   $('#tf-radii').value = t ? (t.radii || []).join(', ') : '';
   $('#tf-elev').value = t && t.elevFt != null ? t.elevFt : '';
   $('#tf-ga').checked = !!(t && t.ga);
+  formSym = t && t.sym || 'x'; renderSymGrid();
+  $('#tf-lock').checked = !!(t && t.locked); applyLockUi();
   $('#tf-gwfrom').value = t && t.gw ? t.gw.from : ''; $('#tf-gwkmh').value = t && t.gw ? String(t.gw.kmh).replace('.', ',') : '';
   $('#tf-del').hidden = !t;
   previewTarget(); openSheet('#sheet-target');
@@ -2667,6 +2735,20 @@ function coordPreview(el, c, raw, hint){
 }
 function previewTarget(){ coordPreview($('#tf-prev'), currentCoord(), $('#tf-coord').value.trim(), '4/4, 5/5 oder 6/7, z. B. 1234/5678'); }
 $('#tf-coord').addEventListener('input', previewTarget);
+let formSym = 'x';
+function renderSymGrid(){
+  const g = $('#tf-sym'); g.innerHTML = '';
+  for (const [k, n] of SYMS) {
+    const b = document.createElement('button'); b.type = 'button'; b.innerHTML = symSvg(k); b.title = n; b.setAttribute('aria-label', n);
+    b.setAttribute('aria-pressed', k === formSym); b.addEventListener('click', () => { formSym = k; renderSymGrid(); }); g.appendChild(b);
+  }
+}
+function applyLockUi(){
+  const lk = $('#tf-lock').checked;
+  $('#tf-coord').disabled = lk; $('#tf-here').disabled = lk;
+  if (lk) { $('#tf-prev').className = ''; $('#tf-prev').textContent = 'Gesperrt. Zum Ändern der Koordinate erst entsperren.'; } else previewTarget();
+}
+$('#tf-lock').addEventListener('change', applyLockUi);
 $('#tf-here').addEventListener('click', () => {
   if (!pos) { $('#tf-prev').className = 'err'; $('#tf-prev').textContent = 'Noch keine Position vorhanden.'; return; }
   exact = { E:pos.E, N:pos.N, code:code44(pos.E, pos.N) }; $('#tf-coord').value = exact.code; previewTarget();
@@ -2674,7 +2756,7 @@ $('#tf-here').addEventListener('click', () => {
 $('#tf-save').addEventListener('click', () => {
   const c = currentCoord();
   if (!c) { previewTarget(); $('#tf-coord').focus(); return; }
-  const data = { name:$('#tf-name').value.trim() || 'Ziel', E:c.E, N:c.N, radii:parseRadii($('#tf-radii').value), elevFt:numOrNull($('#tf-elev').value), ga:$('#tf-ga').checked };
+  const data = { name:$('#tf-name').value.trim() || 'Ziel', E:c.E, N:c.N, radii:parseRadii($('#tf-radii').value), elevFt:numOrNull($('#tf-elev').value), ga:$('#tf-ga').checked, sym:formSym, locked:$('#tf-lock').checked };
   const gf = numOrNull($('#tf-gwfrom').value), gk = numOrNull($('#tf-gwkmh').value);
   data.gw = gf != null && gk != null ? { from:((gf % 360) + 360) % 360, kmh:Math.max(0, gk) } : null;
   const old = editId ? S.targets.find(x => x.id === editId) : null;
@@ -2700,7 +2782,7 @@ function renderList(){
   for (const t of sorted) {
     const li = document.createElement('li'); if (t.id === S.activeId) li.className = 'act';
     const meta = document.createElement('div'); meta.className = 'meta';
-    const nm = document.createElement('div'); nm.className = 'nm'; nm.textContent = t.name;
+    const nm = document.createElement('div'); nm.className = 'nm'; nm.textContent = t.name + (t.locked ? '  🔒' : '');
     const sub = document.createElement('div'); sub.className = 'sub';
     sub.textContent = code44(t.E, t.N) + (pos ? '   ' + fmtDist(Math.hypot(t.E - pos.E, t.N - pos.N)) : '') + ((t.radii || []).length ? '   ○ ' + t.radii.map(fmtR).join(', ') : '');
     meta.append(nm, sub);
