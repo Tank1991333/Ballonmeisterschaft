@@ -453,7 +453,7 @@ details.more summary{cursor:pointer;color:var(--ink-2);font-size:.9rem;margin:.4
       <button data-open="reset"><b>Fahrt-Punkte löschen</b><small>Karte für die nächste Fahrt</small></button>
     </div>
     <button class="btn" data-open="settings" style="width:100%;margin-top:1rem">Einstellungen<small id="mt-set" style="display:none"></small></button>
-    <p class="note" style="text-align:center;margin-top:.9rem">Version 2026-10-09.6</p>
+    <p class="note" style="text-align:center;margin-top:.9rem">Version 2026-10-09.7</p>
   </div>
 </div>
 
@@ -931,6 +931,19 @@ details.more summary{cursor:pointer;color:var(--ink-2);font-size:.9rem;margin:.4
     <div class="field"><span>Positionsquelle</span>
       <div class="seg"><button id="st-gps" aria-pressed="false">GPS</button><button id="st-sim" aria-pressed="true">Simulation</button></div>
     </div>
+    <div id="st-ser" hidden>
+      <div class="field"><span>GPS-Quelle</span>
+        <div class="seg"><button id="st-src-dev" aria-pressed="true">Gerät</button><button id="st-src-ser" aria-pressed="false">Extern (USB)</button></div>
+      </div>
+      <div id="st-ser-opts" hidden>
+        <div class="row">
+          <label class="field"><span>Baudrate</span>
+            <select id="st-baud"><option value="0">Automatisch</option><option value="4800">4800</option><option value="9600">9600</option><option value="19200">19200</option><option value="38400">38400</option><option value="57600">57600</option><option value="115200">115200</option></select></label>
+          <div class="field" style="flex:0 0 8.5rem"><span>&nbsp;</span><button class="btn primary" id="st-ser-connect" style="width:100%">Verbinden</button></div>
+        </div>
+      </div>
+      <p class="note" id="st-ser-state" style="margin-top:0"></p>
+    </div>
     <div class="field"><span>Farben</span><div class="seg">
       <button data-theme-set="auto">Automatisch</button><button data-theme-set="light">Hell</button><button data-theme-set="dark">Dunkel</button>
     </div></div>
@@ -999,7 +1012,7 @@ const defaults = () => ({
               simFrom:250, simKmh:14, simAltFt:1500, simAltTarget:1500, simRate:1, theme:'auto',
               groundFt:0, fallMs:5, pzLook:300,
               climbFpm:500, sinkFpm:500, minAltFt:500, maxAltFt:5000, tolM:100,
-              lowFt:50, minFinalM:500, sinkOnly:true, importLock:true, importSym:'x', mapFont:1, fanOn:false, digE:4, digN:4, altOffsetFt:0, autoApproachM:3000, sound:false, big:false, windMaxAge:45 },
+              lowFt:50, minFinalM:500, sinkOnly:true, importLock:true, importSym:'x', gpsSrc:'device', serBaud:0, mapFont:1, fanOn:false, digE:4, digN:4, altOffsetFt:0, autoApproachM:3000, sound:false, big:false, windMaxAge:45 },
   crew: { role:'off', status:'air' },
   targets: [], activeId: null, track: [], simPos: null,
   tasks: [], activeTaskId: null, flight: { launchFrom:'', launchTo:'' },
@@ -1513,36 +1526,39 @@ function gpsBar(text, wait){
 }
 const isIOS = () => /iPhone|iPad|iPod/.test(navigator.userAgent) || (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
 let gpsRetry = null;
+let gpsFirst = true, gpsSrcLabel = 'GPS';
+function handleGeo(p){
+  const c = p.coords; let z = S.settings.zone; const zPrev = z;
+  if (S.settings.zoneAuto) { z = zoneOf(c.longitude); if (z !== S.settings.zone) S.settings.zone = z; }
+  const u = ll2utm(c.latitude, c.longitude, z);
+  if (gpsFirst) {
+    gpsFirst = false; gpsBar('');
+    const last = S.track[S.track.length - 1];
+    if (last && Math.hypot(last[0] - u.E, last[1] - u.N) > 5000) S.track = [];
+    if (zPrev !== z || Math.hypot(u.E - S.settings.refE, u.N - S.settings.refN) > 100000) {
+      S.settings.refE = Math.round(u.E); S.settings.refN = Math.round(u.N);
+      const demoT = t => (t.name === 'Ziel A' && Math.round(t.E) === 504200 && Math.round(t.N) === 5501600) || (t.name === 'Ziel B' && Math.round(t.E) === 506500 && Math.round(t.N) === 5498200);
+      S.targets = S.targets.filter(t => !demoT(t)); if (!S.targets.some(t => t.id === S.activeId)) S.activeId = null;
+      S.pz = S.pz.filter(z => !(z.name === 'PZ 1' && Math.round(z.E) === 502600 && Math.round(z.N) === 5499700));
+      invalidatePlan();
+    }
+    save();
+    setFollow(true);
+  }
+  const raw = c.altitude != null ? c.altitude / FT : null;
+  if (raw == null && S.settings.manualAltFt == null) S.settings.manualAltFt = S.settings.groundFt;
+  pushFix({ E:u.E, N:u.N, altFt: raw != null ? raw + S.settings.altOffsetFt : S.settings.manualAltFt, rawAltFt:raw, t: p.timestamp || Date.now() });
+  lastAcc = c.accuracy; lastLon = c.longitude;
+  setStatus(gpsSrcLabel + ' ±' + Math.round(c.accuracy) + ' m' + (p.sats ? ', ' + p.sats + ' Sat' : ''), c.accuracy <= 30 ? 'ok' : 'warn');
+}
 function startGps(){
-  fixes = []; pos = null; updateHud(); requestDraw(); clearTimeout(gpsRetry);
+  fixes = []; pos = null; updateHud(); requestDraw(); clearTimeout(gpsRetry); gpsFirst = true;
+  if (S.settings.gpsSrc === 'serial') { gpsSrcLabel = 'Extern'; startSerial(false); return; }
+  gpsSrcLabel = 'GPS';
   if (!window.isSecureContext) { setStatus('Kein GPS', 'warn'); gpsBar('GPS geht nur, wenn die Seite über https geöffnet wird, z. B. https://deinname.github.io/…'); return; }
   if (!('geolocation' in navigator)) { setStatus('Kein GPS', 'warn'); gpsBar('Dieser Browser bietet kein GPS an.'); return; }
   setStatus('GPS sucht …', ''); gpsBar('Warte auf GPS-Signal. Im Freien dauert das meist unter einer Minute.', true);
-  let first = true;
-  watchId = navigator.geolocation.watchPosition(p => {
-    const c = p.coords; let z = S.settings.zone; const zPrev = z;
-    if (S.settings.zoneAuto) { z = zoneOf(c.longitude); if (z !== S.settings.zone) S.settings.zone = z; }
-    const u = ll2utm(c.latitude, c.longitude, z);
-    if (first) {
-      first = false; gpsBar('');
-      const last = S.track[S.track.length - 1];
-      if (last && Math.hypot(last[0] - u.E, last[1] - u.N) > 5000) S.track = [];
-      if (zPrev !== z || Math.hypot(u.E - S.settings.refE, u.N - S.settings.refN) > 100000) {
-        S.settings.refE = Math.round(u.E); S.settings.refN = Math.round(u.N);
-        const demoT = t => (t.name === 'Ziel A' && Math.round(t.E) === 504200 && Math.round(t.N) === 5501600) || (t.name === 'Ziel B' && Math.round(t.E) === 506500 && Math.round(t.N) === 5498200);
-        S.targets = S.targets.filter(t => !demoT(t)); if (!S.targets.some(t => t.id === S.activeId)) S.activeId = null;
-        S.pz = S.pz.filter(z => !(z.name === 'PZ 1' && Math.round(z.E) === 502600 && Math.round(z.N) === 5499700));
-        invalidatePlan();
-      }
-      save();
-      setFollow(true);
-    }
-    const raw = c.altitude != null ? c.altitude / FT : null;
-    if (raw == null && S.settings.manualAltFt == null) S.settings.manualAltFt = S.settings.groundFt;
-    pushFix({ E:u.E, N:u.N, altFt: raw != null ? raw + S.settings.altOffsetFt : S.settings.manualAltFt, rawAltFt:raw, t: p.timestamp || Date.now() });
-    lastAcc = c.accuracy; lastLon = c.longitude;
-    setStatus('GPS ±' + Math.round(c.accuracy) + ' m', c.accuracy <= 30 ? 'ok' : 'warn');
-  }, err => {
+  watchId = navigator.geolocation.watchPosition(handleGeo, err => {
     if (err.code === 1) {
       setStatus('GPS nicht erlaubt', 'warn');
       gpsBar(isIOS() ? 'Standort nicht erlaubt. iPhone: Einstellungen → Datenschutz & Sicherheit → Ortungsdienste einschalten → Safari-Websites → „Beim Verwenden“. Dann in Safari auf „aA“ → Website-Einstellungen → Standort → Erlauben.'
@@ -1555,14 +1571,109 @@ function startGps(){
     }
   }, { enableHighAccuracy:true, maximumAge:1000, timeout:30000 });
 }
-$('#gps-retry').addEventListener('click', () => { stopGps(); startGps(); });
-function stopGps(){ if (watchId != null) navigator.geolocation.clearWatch(watchId); watchId = null; clearTimeout(gpsRetry); gpsBar(''); }
+
+/* ---------- Externes GPS über USB (Web Serial, NMEA 0183) ---------- */
+const ser = { port:null, reader:null, pipe:null, on:false, baud:0, lastValid:0, lastGga:0, info:'', sats:null, hdop:null, watch:null };
+const hasSerial = () => 'serial' in navigator;
+function nmeaDeg(v, h){ if (!v) return null; const f = parseFloat(v); if (!isFinite(f)) return null; const d = Math.floor(f / 100); let x = d + (f - d * 100) / 60; if (h === 'S' || h === 'W') x = -x; return x; }
+function nmeaOk(line){
+  const m = line.match(/^\$([^*]+)\*([0-9A-Fa-f]{2})\s*$/); if (!m) return false;
+  let c = 0; for (const ch of m[1]) c ^= ch.charCodeAt(0); return c === parseInt(m[2], 16);
+}
+function onNmea(line){
+  if (!nmeaOk(line)) return;
+  const f = line.slice(1, line.indexOf('*')).split(','), id = f[0].slice(-3);
+  if (id === 'GGA') {
+    ser.lastValid = Date.now();
+    const q = +f[6]; ser.sats = +f[7] || null; ser.hdop = parseFloat(f[8]) || null;
+    if (!q) { ser.info = 'kein Fix'; return; }
+    const lat = nmeaDeg(f[2], f[3]), lon = nmeaDeg(f[4], f[5]), alt = f[9] !== '' ? parseFloat(f[9]) : null;
+    if (lat == null || lon == null) return;
+    ser.lastGga = Date.now(); ser.info = '';
+    handleGeo({ coords:{ latitude:lat, longitude:lon, altitude: isFinite(alt) ? alt : null, accuracy: ser.hdop ? Math.max(2, ser.hdop * 4) : 10 }, timestamp:Date.now(), sats:ser.sats });
+  } else if (id === 'RMC') {
+    ser.lastValid = Date.now();
+    if (f[2] !== 'A') { ser.info = 'kein Fix'; return; }
+    if (Date.now() - ser.lastGga < 3000) return;
+    const lat = nmeaDeg(f[3], f[4]), lon = nmeaDeg(f[5], f[6]);
+    if (lat == null || lon == null) return;
+    handleGeo({ coords:{ latitude:lat, longitude:lon, altitude:null, accuracy:10 }, timestamp:Date.now() });
+  }
+}
+async function serialRead(){
+  const dec = new TextDecoderStream();
+  ser.pipe = ser.port.readable.pipeTo(dec.writable).catch(() => {});
+  ser.reader = dec.readable.getReader();
+  let buf = '';
+  try {
+    while (ser.on) {
+      const { value, done } = await ser.reader.read(); if (done) break;
+      buf += value; let i;
+      while ((i = buf.search(/\r?\n/)) >= 0) { const ln = buf.slice(0, i).trim(); buf = buf.slice(i + 1).replace(/^\n/, ''); if (ln.charAt(0) === '$') onNmea(ln); }
+      if (buf.length > 4000) buf = '';
+    }
+  } catch (e) {}
+}
+async function serialClose(){
+  ser.on = false; clearInterval(ser.watch);
+  try { if (ser.reader) await ser.reader.cancel(); } catch (e) {}
+  try { if (ser.pipe) await ser.pipe; } catch (e) {}
+  try { if (ser.port) await ser.port.close(); } catch (e) {}
+  ser.reader = null; ser.pipe = null;
+}
+async function serialOpen(baud){
+  await ser.port.open({ baudRate:baud }); ser.baud = baud; ser.on = true; ser.lastValid = 0;
+  serialRead();
+  const t0 = Date.now(); while (Date.now() - t0 < 3500) { if (ser.lastValid) return true; await new Promise(r => setTimeout(r, 250)); }
+  return !!ser.lastValid;
+}
+async function startSerial(ask){
+  if (!hasSerial()) { setStatus('Kein externes GPS', 'warn'); gpsBar('Externes GPS über USB geht nur in Chrome oder Edge am Computer (Web Serial). Stell unter Einstellungen die GPS-Quelle auf „Gerät“.'); renderSerial(); return; }
+  try {
+    await serialClose();
+    if (ask) ser.port = await navigator.serial.requestPort();
+    else { const ports = await navigator.serial.getPorts(); ser.port = ports[0] || null; }
+    if (!ser.port) { setStatus('Extern nicht verbunden', 'warn'); gpsBar('Externes GPS: Gerät einstecken und „Verbinden“ tippen, dann den COM-Port auswählen.'); $('#gps-retry').textContent = 'Verbinden'; renderSerial(); return; }
+    setStatus('Extern verbindet …', ''); gpsBar('Verbinde mit dem externen GPS …', true);
+    const pref = +S.settings.serBaud || 0, list = pref ? [pref] : [4800, 9600, 38400, 115200, 19200, 57600];
+    let ok = false;
+    for (const b of list) { if (await serialOpen(b)) { ok = true; break; } await serialClose(); }
+    if (!ok) { setStatus('Extern: keine Daten', 'warn'); gpsBar('Vom Gerät kommen keine NMEA-Daten. Prüfe die Baudrate in den Einstellungen und ob das GPS eingeschaltet ist.'); $('#gps-retry').textContent = 'Verbinden'; renderSerial(); return; }
+    gpsBar('Externes GPS verbunden (' + ser.baud + ' Baud), warte auf Position …', true);
+    ser.watch = setInterval(() => {
+      if (!ser.on) return;
+      const age = Date.now() - ser.lastValid;
+      if (age > 5000) { setStatus('Extern: keine Daten', 'warn'); gpsBar('Seit ' + Math.round(age / 1000) + ' s keine Daten vom externen GPS. Kabel prüfen.'); $('#gps-retry').textContent = 'Verbinden'; }
+      else if (ser.info === 'kein Fix' && !pos) setStatus('Extern: kein Fix' + (ser.sats ? ', ' + ser.sats + ' Sat' : ''), 'warn');
+    }, 2000);
+    renderSerial();
+  } catch (e) {
+    setStatus('Extern nicht verbunden', 'warn');
+    gpsBar(e && e.name === 'NotFoundError' ? 'Kein Gerät ausgewählt. „Verbinden“ tippen und den COM-Port des GPS wählen.' : 'Verbindung fehlgeschlagen. Ist der Port von einem anderen Programm belegt?');
+    $('#gps-retry').textContent = 'Verbinden'; renderSerial();
+  }
+}
+function renderSerial(){
+  const box = $('#st-ser'); if (!box) return;
+  box.hidden = S.settings.mode !== 'gps';
+  $('#st-src-dev').setAttribute('aria-pressed', S.settings.gpsSrc !== 'serial');
+  $('#st-src-ser').setAttribute('aria-pressed', S.settings.gpsSrc === 'serial');
+  $('#st-ser-opts').hidden = S.settings.gpsSrc !== 'serial';
+  $('#st-baud').value = String(S.settings.serBaud || 0);
+  setText('st-ser-state', !hasSerial() ? 'Externes GPS braucht Chrome oder Edge am Computer (Web Serial). Am Handy und am iPad geht das nicht.'
+    : ser.on && ser.lastValid ? 'Verbunden, ' + ser.baud + ' Baud' + (ser.sats ? ', ' + ser.sats + ' Satelliten' : '') + (ser.hdop ? ', HDOP ' + ser.hdop : '') + '.'
+    : 'GPS per USB einstecken, „Verbinden“ tippen und den COM-Port wählen. Erkannt werden NMEA-Sätze GGA und RMC.');
+}
+if (hasSerial()) navigator.serial.addEventListener('disconnect', e => { if (ser.port && e.target === ser.port) { serialClose(); setStatus('Extern getrennt', 'warn'); gpsBar('Das externe GPS wurde getrennt.'); $('#gps-retry').textContent = 'Verbinden'; } });
+$('#gps-retry').addEventListener('click', () => { if (S.settings.mode === 'gps' && S.settings.gpsSrc === 'serial') { gpsSrcLabel = 'Extern'; gpsFirst = true; startSerial(true); } else { stopGps(); startGps(); } });
+function stopGps(){ if (watchId != null) navigator.geolocation.clearWatch(watchId); watchId = null; clearTimeout(gpsRetry); gpsBar(''); $('#gps-retry').textContent = 'Erneut versuchen'; if (ser.on || ser.port) serialClose(); }
 function applyMode(){
   stopSim(); stopGps();
   if (S.settings.mode === 'gps') startGps(); else startSim();
   updateAltCtl();
   $('#st-gps').setAttribute('aria-pressed', S.settings.mode === 'gps');
   $('#st-sim').setAttribute('aria-pressed', S.settings.mode === 'sim');
+  renderSerial();
 }
 function setStatus(text, state){ const c = $('#status'); c.textContent = text; c.dataset.state = state; }
 
@@ -2769,7 +2880,7 @@ let lastAcc = null, lastLon = null;
 const ckTicks = {};
 function checks(){
   const st = S.settings, out = [], gps = st.mode === 'gps';
-  out.push({ ok: gps, txt:'Positionsquelle GPS', sub: gps ? 'GPS ist aktiv' : 'Die Simulation ist aktiv', act: gps ? null : ['Umstellen', () => { st.mode = 'gps'; save(); applyMode(); }] });
+  out.push({ ok: gps, txt:'Positionsquelle GPS', sub: gps ? (st.gpsSrc === 'serial' ? 'externes GPS über USB' : 'GPS ist aktiv') : 'Die Simulation ist aktiv', act: gps ? null : ['Umstellen', () => { st.mode = 'gps'; save(); applyMode(); }] });
   out.push({ ok: gps && !!pos && pos.rawAltFt != null, txt:'GPS-Höhe', sub: !gps || !pos ? 'wird mit GPS geprüft' : pos.rawAltFt != null ? 'Gerät liefert eine Höhe' : 'Gerät liefert keine Höhe: manuelle Höhe links unten verwenden und mit dem Höhenmesser abgleichen', act: pos && pos.rawAltFt == null ? ['Höhe eingeben', openAltSheet] : null });
   out.push({ ok: lastAcc != null && lastAcc <= 30, txt:'GPS-Genauigkeit', sub: lastAcc != null ? '±' + Math.round(lastAcc) + ' m' + (lastAcc > 30 ? ', besser unter 30 m' : '') : 'noch kein GPS-Signal' });
   out.push({ ok: lastLon != null && zoneOf(lastLon) === st.zone, txt:'UTM-Zone ' + st.zone, sub: lastLon != null ? (zoneOf(lastLon) === st.zone ? 'passt zur Position' : 'Position liegt in Zone ' + zoneOf(lastLon)) : 'wird mit GPS geprüft' });
@@ -3622,7 +3733,7 @@ const openers = {
   brief: () => { renderBrief(); openSheet('#sheet-brief'); },
   reset: () => { const b = $('#rs-log'); b.textContent = 'Vorher im Logbuch speichern'; b.disabled = false; renderReset(); openSheet('#sheet-reset'); },
   check: () => { renderCheck(); openSheet('#sheet-check'); },
-  settings: () => { bkMsg(''); $('#bk-apply').hidden = true; fillSettings(); installNote(); openSheet('#sheet-settings'); }
+  settings: () => { bkMsg(''); $('#bk-apply').hidden = true; fillSettings(); installNote(); renderSerial(); openSheet('#sheet-settings'); }
 };
 $('#btn-menu').addEventListener('click', () => {
   { const o = checks().filter(c => !c.ok).length; setText('mt-check', o ? o + (o === 1 ? ' Punkt offen' : ' Punkte offen') : 'alles bereit'); }
@@ -4038,6 +4149,10 @@ function fillSettings(){
 }
 $('#st-gps').addEventListener('click', () => { S.settings.mode = 'gps'; save(); applyMode(); requestDraw(); });
 $('#st-sim').addEventListener('click', () => { S.settings.mode = 'sim'; save(); applyMode(); requestDraw(); });
+$('#st-src-dev').addEventListener('click', () => { S.settings.gpsSrc = 'device'; save(); applyMode(); });
+$('#st-src-ser').addEventListener('click', () => { S.settings.gpsSrc = 'serial'; save(); applyMode(); });
+$('#st-baud').addEventListener('change', e => { S.settings.serBaud = +e.target.value; save(); });
+$('#st-ser-connect').addEventListener('click', () => { S.settings.mode = 'gps'; S.settings.gpsSrc = 'serial'; save(); stopSim(); stopGps(); gpsSrcLabel = 'Extern'; gpsFirst = true; fixes = []; pos = null; startSerial(true).then(renderSerial); });
 $('#st-zone').addEventListener('change', e => { const z = parseInt(e.target.value, 10); if (z >= 1 && z <= 60) { S.settings.zone = z; save(); } });
 function digPreview(){
   const E = pos ? pos.E : S.settings.refE, N = pos ? pos.N : S.settings.refN;
