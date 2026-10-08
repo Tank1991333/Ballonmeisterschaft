@@ -73,7 +73,10 @@ button{font:inherit;color:inherit;cursor:pointer}
 :root.big .zoombtn{display:grid}
 :root.big .rail .gap{display:block}
 .mapwrap.anflug #tool-add,.mapwrap.anflug #tool-measure{display:none}
-.mapwrap.replaying #tool-add,.mapwrap.replaying #tool-measure,.mapwrap.replaying #btn-view,.mapwrap.replaying #btn-note{display:none}
+.mapwrap.replaying #tool-add,.mapwrap.replaying #tool-measure,.mapwrap.replaying #btn-view,.mapwrap.replaying #btn-note,.mapwrap.replaying #btn-track{display:none}
+#btn-track svg circle{fill:none;stroke:var(--balloon)}
+#btn-track[aria-pressed="true"]{background:var(--balloon);border-color:var(--balloon)}
+#btn-track[aria-pressed="true"] svg circle{fill:#fff;stroke:#fff}
 #stat-alt{cursor:pointer;border-radius:6px}
 #stat-alt dd{text-decoration:underline dotted;text-underline-offset:3px}
 .overlay{position:absolute;left:.65rem;right:4.4rem;display:flex;flex-direction:column;gap:.45rem;top:.65rem;pointer-events:none}
@@ -325,6 +328,9 @@ input[type=range]{padding:0;border:0;background:none;accent-color:var(--ink)}
     <button class="rbtn" id="btn-follow" aria-pressed="true" aria-label="Ballon zentrieren" title="Ballon zentrieren">
       <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="1.5"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
     </button>
+    <button class="rbtn" id="btn-track" aria-pressed="false" aria-label="Track starten oder beenden" title="Track starten oder beenden">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="6.5" stroke-width="2.5"/></svg>
+    </button>
     <button class="rbtn" id="btn-note" aria-label="Markierung am Track setzen" title="Markierung setzen">
       <svg viewBox="0 0 24 24"><path d="M12 21s-6-5.3-6-10a6 6 0 0 1 12 0c0 4.7-6 10-6 10z"/><circle cx="12" cy="11" r="2.2"/></svg>
     </button>
@@ -403,7 +409,7 @@ input[type=range]{padding:0;border:0;background:none;accent-color:var(--ink)}
       <button data-open="log"><b>Logbuch</b><small id="mt-log"></small></button>
       <button data-open="settings"><b>Einstellungen</b><small id="mt-set"></small></button>
     </div>
-    <p class="note" style="text-align:center;margin-top:.9rem">Version 2026-10-08.5</p>
+    <p class="note" style="text-align:center;margin-top:.9rem">Version 2026-10-08.6</p>
   </div>
 </div>
 
@@ -664,6 +670,16 @@ input[type=range]{padding:0;border:0;background:none;accent-color:var(--ink)}
   </div>
 </div>
 
+<!-- Track -->
+<div class="back" id="sheet-track">
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="tr-title">
+    <h2 id="tr-title">Track</h2>
+    <p class="note" id="tr-info" style="margin-top:0"></p>
+    <div class="btns" id="tr-btns" style="flex-direction:column"></div>
+    <p class="note" id="tr-msg"></p>
+  </div>
+</div>
+
 <!-- Startcheck -->
 <div class="back" id="sheet-check">
   <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="ck-title">
@@ -895,7 +911,7 @@ const defaults = () => ({
   crew: { role:'off', status:'air' },
   targets: [], activeId: null, track: [], simPos: null,
   tasks: [], activeTaskId: null, flight: { launchFrom:'', launchTo:'' },
-  pz: [], windMeasured: {}, windManual: [], flights: [], notes: [],
+  pz: [], windMeasured: {}, windManual: [], flights: [], notes: [], trackOn: false,
   map: { has:false, w:0, h:0, a:null, b:null, cal:false, show:true, opacity:.85 }
 });
 function uid(){ return Math.random().toString(36).slice(2, 9); }
@@ -1023,7 +1039,7 @@ function pushFix(p){
   fixes.push({ E:p.E, N:p.N, t:p.t, alt:p.altFt });
   while (fixes.length && fixes[0].t < p.t - 90000) fixes.shift();
   const last = S.track[S.track.length - 1];
-  if (!last || Math.hypot(p.E - last[0], p.N - last[1]) > 15 || p.t - last[3] > 10000) {
+  if (S.trackOn && (!last || Math.hypot(p.E - last[0], p.N - last[1]) > 15 || p.t - last[3] > 10000)) {
     S.track.push([Math.round(p.E), Math.round(p.N), Math.round(p.altFt || 0), p.t]);
     if (S.track.length > 8000) S.track.splice(0, S.track.length - 8000);
   }
@@ -1467,7 +1483,7 @@ function drawTrack(){
   if (S.track.length < 2 || layer === 'anflug') return;
   ctx.beginPath();
   S.track.forEach((p, i) => { const [x, y] = w2s(p[0], p[1]); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); });
-  if (pos) { const [x, y] = w2s(pos.E, pos.N); ctx.lineTo(x, y); }
+  if (pos && S.trackOn) { const [x, y] = w2s(pos.E, pos.N); ctx.lineTo(x, y); }
   ctx.strokeStyle = colors.track; ctx.lineWidth = 2.5; ctx.lineJoin = 'round'; ctx.globalAlpha = .85; ctx.stroke(); ctx.globalAlpha = 1;
 }
 function cross(x, y, k){ seg(x - k, y - k, x + k, y + k); seg(x + k, y - k, x - k, y + k); }
@@ -1513,6 +1529,7 @@ function symSvg(sym){
     dot:'<circle cx="13" cy="13" r="6.5" fill="' + c + '" stroke="' + ink + '" stroke-width="2"/>' };
   return '<svg viewBox="0 0 26 26" aria-hidden="true">' + (m[sym] || m.x) + '</svg>';
 }
+function taskTags(t){ return S.tasks.filter(k => k.targets.includes(t.id)).sort((a, b) => a.nr - b.nr).map(k => 'T' + k.nr + ', ' + k.type).join('   '); }
 function drawTargets(){
   const act = frame.t, task = activeTask(), mmaOf = {};
   for (const k of S.tasks) if (k.mma) for (const id of k.targets) mmaOf[id] = Math.max(mmaOf[id] || 0, k.mma);
@@ -1524,6 +1541,7 @@ function drawTargets(){
       drawSymbol(t.sym, x, y, 7, false);
       label(t.name, x + 12, y + 4, { size:12, weight:600 });
       if (t.locked) { ctx.font = '600 12px ' + FONT_NUM; drawLock(x + 14 + ctx.measureText(t.name).width, y + 4); }
+      { const tg = taskTags(t); if (tg) label(tg, x + 12, y + 17, { size:11, weight:700, color:colors.ink }); }
       ctx.globalAlpha = 1; continue;
     }
     for (const r of t.radii || []) {
@@ -1554,7 +1572,8 @@ function drawTargets(){
     drawSymbol(t.sym, x, y, k, on);
     label(t.name, x + k + 7, y - 2, { size:on ? 15 : 13, weight:700 });
     if (t.locked) { ctx.font = '700 ' + (on ? 15 : 13) + 'px ' + FONT_NUM; drawLock(x + k + 10 + ctx.measureText(t.name).width, y - 2); }
-    label(code44(t.E, t.N), x + k + 7, y + 13, { size:12, color:colors['ink-2'] });
+    { const tg = taskTags(t); if (tg) { label(tg, x + k + 7, y + 13, { size:12, weight:700, color:colors.ink }); ctx.font = '700 12px ' + FONT_NUM; label(code44(t.E, t.N), x + k + 7 + ctx.measureText(tg).width + 8, y + 13, { size:12, color:colors['ink-2'] }); }
+      else label(code44(t.E, t.N), x + k + 7, y + 13, { size:12, color:colors['ink-2'] }); }
     ctx.globalAlpha = 1;
   }
 }
@@ -2163,6 +2182,40 @@ function renderLog(){
     ul.appendChild(li);
   }
 }
+async function storeFlight(){
+  const id = uid(), date = S.track[0][3];
+  const name = new Date(date).toLocaleString('de-AT', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
+  const rec = JSON.parse(JSON.stringify({ id, name, date, track:S.track, targets:S.targets, tasks:S.tasks, pz:S.pz, notes:S.notes, zone:S.settings.zone }));
+  await idbPut('flight:' + id, rec);
+  const st = trackStats(rec.track);
+  S.flights.unshift({ id, name, date, dur:st.dur, dist:st.dist, maxA:st.maxA });
+}
+function setTrackUi(){ $('#btn-track').setAttribute('aria-pressed', !!S.trackOn); }
+function trackSheet(){
+  closeSheets();
+  const n = S.track.length, st = trackStats(S.track), box = $('#tr-btns'); box.innerHTML = ''; setText('tr-msg', '');
+  const btn = (txt, cls, fn) => { const b = document.createElement('button'); b.className = 'btn' + (cls ? ' ' + cls : ''); b.textContent = txt; b.addEventListener('click', fn); box.appendChild(b); };
+  const start = clear => { if (clear) { S.track = []; } S.trackOn = true; save(); setTrackUi(); closeSheets(); requestDraw(); say('Track gestartet'); };
+  if (S.trackOn) {
+    setText('tr-title', 'Track beenden?');
+    setText('tr-info', 'Aufgezeichnet: ' + fmtDur(st.dur) + ', ' + fmtDist(st.dist) + ', ' + n + ' Punkte.');
+    btn('Beenden und im Logbuch speichern', 'primary', async () => {
+      S.trackOn = false; setTrackUi();
+      if (S.track.length > 1) { try { await storeFlight(); } catch (e) { setText('tr-msg', 'Speichern auf dem Gerät war nicht möglich. Der Track bleibt erhalten.'); save(); return; } }
+      save(); closeSheets(); requestDraw(); say('Track beendet und gespeichert');
+    });
+    btn('Nur beenden', '', () => { S.trackOn = false; save(); setTrackUi(); closeSheets(); requestDraw(); say('Track beendet'); });
+    btn('Weiter aufzeichnen', '', closeSheets);
+  } else if (n > 1) {
+    setText('tr-title', 'Track starten');
+    setText('tr-info', 'Es gibt schon einen Track (' + fmtDur(st.dur) + ', ' + fmtDist(st.dist) + '). Neu beginnen löscht ihn, speichere ihn vorher im Logbuch, wenn du ihn behalten willst.');
+    btn('Neuen Track beginnen', 'primary', () => start(true));
+    btn('Alten Track fortsetzen', '', () => start(false));
+    btn('Abbrechen', '', closeSheets);
+  } else { start(true); return; }
+  openSheet('#sheet-track');
+}
+$('#btn-track').addEventListener('click', trackSheet);
 $('#log-save').addEventListener('click', async () => {
   if (S.track.length < 2) { logMsg('Es gibt noch keinen Track zum Speichern.'); return; }
   const id = uid(), date = S.track[0][3];
@@ -2396,6 +2449,7 @@ function checks(){
   out.push({ ok: S.pz.length > 0 || !!ckTicks.pz, manual: S.pz.length ? null : 'pz', txt:'Sperrgebiete', sub: S.pz.length ? S.pz.length + ' eingetragen' : 'keine eingetragen, bestätigen falls es keine gibt' });
   const nw = windProfile().length;
   out.push({ ok: nw > 0, txt:'Winddaten', sub: nw ? nw + ' Höhen bekannt' : 'Pibal eintragen oder beim Steigen messen', act:['Wind', openers.wind] });
+  out.push({ ok: !!S.trackOn, txt:'Track-Aufzeichnung', sub: S.trackOn ? 'läuft' : 'aus, mit dem roten Kreis rechts starten', act: S.trackOn ? null : ['Starten', () => { trackSheet(); }] });
   out.push({ ok: !!st.sound, txt:'Ansagen', sub: st.sound ? 'eingeschaltet' : 'ausgeschaltet', act: st.sound ? null : ['Einschalten', () => { st.sound = true; save(); setSoundUi(); say('Ansagen an'); }] });
   if (S.map.has) out.push({ ok: !!S.map.cal, txt:'Wettbewerbskarte kalibriert', sub: S.map.cal ? 'passt zum Gitter' : 'noch nicht kalibriert', act: S.map.cal ? null : ['Karte', openers.map] });
   if (window.__wfOwnSite) out.push({ ok: !!(navigator.serviceWorker && navigator.serviceWorker.controller), txt:'Offline bereit', sub: navigator.serviceWorker && navigator.serviceWorker.controller ? 'App startet auch ohne Netz' : 'einmal mit Internet öffnen und neu laden; sw.js muss hochgeladen sein' });
@@ -3515,7 +3569,7 @@ $('#wl-gps').addEventListener('click', () => {
   S.firstRun = false; S.targets = []; S.pz = []; S.activeId = null; S.track = []; S.simPos = null; S.settings.mode = 'gps';
   save(); closeSheets(); applyMode(); requestDraw(); updateHud();
 });
-$('#wl-sim').addEventListener('click', () => { S.firstRun = false; save(); closeSheets(); });
+$('#wl-sim').addEventListener('click', () => { S.firstRun = false; S.trackOn = true; setTrackUi(); save(); closeSheets(); });
 $('#st-install').addEventListener('click', async () => {
   const e = window.__wfInstall; if (!e) return;
   e.prompt(); try { await e.userChoice; } catch (err) {}
@@ -3529,6 +3583,7 @@ function installNote(){
     : window.__wfInstall ? '' : 'Als App installieren: im Browser-Menü „Zum Startbildschirm hinzufügen“ oder „App installieren“.');
 }
 
+setTrackUi();
 applyMode();
 if (S.firstRun) openSheet('#sheet-welcome');
 setInterval(() => { updateHud(); requestDraw(); }, 1000);
