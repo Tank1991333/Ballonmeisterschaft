@@ -446,7 +446,7 @@ details.more summary{cursor:pointer;color:var(--ink-2);font-size:.9rem;margin:.4
       <button data-open="reset"><b>Fahrt-Punkte löschen</b><small>Karte für die nächste Fahrt</small></button>
     </div>
     <button class="btn" data-open="settings" style="width:100%;margin-top:1rem">Einstellungen<small id="mt-set" style="display:none"></small></button>
-    <p class="note" style="text-align:center;margin-top:.9rem">Version 2026-10-09.3</p>
+    <p class="note" style="text-align:center;margin-top:.9rem">Version 2026-10-09.4</p>
   </div>
 </div>
 
@@ -460,6 +460,7 @@ details.more summary{cursor:pointer;color:var(--ink-2);font-size:.9rem;margin:.4
     </div>
     <button class="btn" id="ts-import" style="width:100%;margin-bottom:.4rem">Task Sheet importieren</button>
     <p class="note" id="ts-msg" style="margin:0 0 .4rem"></p>
+    <p class="note" id="ts-info" style="margin:0 0 .4rem;font-weight:600;color:var(--ink)"></p>
     <ul class="tlist" id="tasklist"></ul>
     <div class="btns">
       <button class="btn" data-close>Schließen</button>
@@ -2062,6 +2063,9 @@ function drawTaskHelp(){
     if (d.limit) { ctx.beginPath(); ctx.arc(rx, ry, d.limit * view.s, 0, 2 * Math.PI); ctx.setLineDash([8, 6]); ctx.stroke(); ctx.setLineDash([]); }
   }
   if (d && d.type === 'fan' && layer !== 'anflug' && !S.settings.fanOn) drawFan();
+  { const mr = markRule(task); if (mr) { const [rx, ry] = w2s(mr.ref.E, mr.ref.N); ctx.strokeStyle = colors.ok; ctx.lineWidth = 2; ctx.setLineDash([8, 6]);
+      for (const rr of [mr.q.min, mr.q.max]) if (rr) { ctx.beginPath(); ctx.arc(rx, ry, rr * view.s, 0, 2 * Math.PI); ctx.stroke(); label(fmtR(rr), rx + rr * view.s * .707 + 4, ry - rr * view.s * .707, { size:11, weight:700, color:colors.ok }); }
+      ctx.setLineDash([]); } }
   (task.marks || []).forEach((mk, i) => {
     const [x, y] = w2s(mk.E, mk.N);
     ctx.fillStyle = colors.ink; ctx.fillRect(x - 5, y - 5, 10, 10); ctx.strokeStyle = colors.panel; ctx.lineWidth = 2; ctx.strokeRect(x - 5, y - 5, 10, 10);
@@ -2073,7 +2077,8 @@ function updateTaskHelp(m, prof, asMain){
   const show = th && !(task.type === 'PDG' && (task.decl || []).length);
   if (!show) { el.hidden = true; return null; }
   el.hidden = false;
-  setText('th-l', asMain ? '' : th.l); setText('th-v', asMain ? '' : th.v); setText('th-s', th.s || '');
+  const mr = markRule(task);
+  setText('th-l', asMain ? '' : th.l); setText('th-v', asMain ? '' : th.v); setText('th-s', (th.s || '') + (mr ? (th.s ? ', ' : '') + mr.txt : ''));
   $('#th-decl').hidden = !th.decl;
   const b = $('#th-btn');
   if (th.go) { b.hidden = th.go === S.activeId; b.textContent = 'Ansteuern'; b.dataset.act = 'go'; b.dataset.id = th.go; }
@@ -2085,22 +2090,41 @@ $('#th-btn').addEventListener('click', e => {
   const b = e.currentTarget, task = activeTask(); if (!task) return;
   if (b.dataset.act === 'go') { setActive(b.dataset.id); return; }
   if (!pos) return;
+  const mr = markRule(task);
   task.marks = task.marks || []; const lm = loggerFor(task, 'mark'); task.marks.push({ E:pos.E, N:pos.N, t:pos.t });
-  if (lm) { showLogger('Loggermarker ' + lm + ' setzen'); say('Marker ' + task.marks.length + ' gesetzt. Loggermarker ' + lm + ' setzen', true); }
+  if (mr && !mr.ok) { showLogger('Achtung: ' + mr.txt + '. Punkt ' + PL[mr.q.to] + ' liegt außerhalb.', true); say('Achtung, Abstand außerhalb der Vorgabe', true); }
+  if (lm && !(mr && !mr.ok)) { showLogger('Loggermarker ' + lm + ' setzen'); say('Marker ' + task.marks.length + ' gesetzt. Loggermarker ' + lm + ' setzen', true); }
   else say('Marker ' + task.marks.length + ' gesetzt');
   save(); updateHud(); requestDraw();
 });
+
+/* Flugdaten aus dem Task Sheet */
+const PL = ['A', 'B', 'C', 'D'];
+function ruleText(q){ return PL[q.to] + ' zu ' + PL[q.from] + ' ' + (q.min ? fmtDist(q.min) : '0') + (q.max ? '–' + fmtDist(q.max) : ' oder mehr'); }
+function flightInfoText(I){
+  if (!I) return '';
+  return [I.flightNo ? 'Flug ' + I.flightNo : '', I.date || '', I.qnh ? 'QNH ' + I.qnh : '', I.sunrise ? 'Sonne ' + I.sunrise + '–' + (I.sunset || '') : '',
+          I.nextBrief ? 'Nächstes Briefing ' + I.nextBrief : '', I.pzInfo ? 'PZ: ' + I.pzInfo : '', I.solo ? 'Solo ' + I.solo : '', I.launchArea ? 'Start: ' + I.launchArea : ''].filter(Boolean).join('   ');
+}
+function markRule(task){
+  if (!task || !task.rules || !task.rules.length || !pos) return null;
+  const n = (task.marks || []).length, q = task.rules.find(x => x.to === n); if (!q) return null;
+  const ref = (task.marks || [])[q.from]; if (!ref) return null;
+  const d = Math.hypot(pos.E - ref.E, pos.N - ref.N), ok = (!q.min || d >= q.min) && (!q.max || d <= q.max);
+  return { q, ref, d, ok, txt:'Abstand ' + PL[q.from] + ': ' + fmtDist(d) + ' (soll ' + (q.min ? fmtDist(q.min) : '0') + (q.max ? '–' + fmtDist(q.max) : '+') + ')' + (ok ? ' ✓' : '') };
+}
 
 /* Logger-Erinnerung */
 function loggerFor(task, kind){
   const note = task && task.note || '';
   if (kind === 'goal') { const m = note.match(/LG\s*(\d+)/); return m ? m[1] : null; }
-  const m = note.match(/LM\s*(\d+(?:\s*,\s*\d+)*)/); if (!m) return null;
-  const list = m[1].split(',').map(x => x.trim()).filter(Boolean);
+  const all = [...note.matchAll(/LM\s*(\d+(?:\s*,\s*\d+)*)/g)].map(x => x[1].split(',').map(y => y.trim()).filter(Boolean));
+  if (!all.length) return null;
+  const list = all.sort((a, b) => b.length - a.length)[0];
   return list[Math.min((task.marks || []).length, list.length - 1)];
 }
 let lgTimer = null;
-function showLogger(txt){ setText('lg-text', txt); $('#lgbar').hidden = false; clearTimeout(lgTimer); lgTimer = setTimeout(() => { $('#lgbar').hidden = true; }, 30000); try { navigator.vibrate && navigator.vibrate([200, 100, 200]); } catch (e) {} }
+function showLogger(txt, warn){ setText('lg-text', txt); const el = $('#lgbar'); el.style.borderColor = el.style.borderLeftColor = warn ? 'var(--warn)' : 'var(--ok)'; el.hidden = false; clearTimeout(lgTimer); lgTimer = setTimeout(() => { $('#lgbar').hidden = true; }, 30000); try { navigator.vibrate && navigator.vibrate([200, 100, 200]); } catch (e) {} }
 $('#lg-ok').addEventListener('click', () => { $('#lgbar').hidden = true; });
 
 /* Zieldeklaration */
@@ -2206,7 +2230,7 @@ function announce(t, d, p, dr){
     if (p.ground) countdown('sink' + t.id, c.tD, [60, 30, 5], mk => mk === 5 ? 'Jetzt sinken' : mk === 60 ? 'Sinken in einer Minute' : 'Sinken in 30 Sekunden');
     if (c.legs.length > 1) countdown('sw' + t.id, c.legs[0].until, [30, 5], mk => mk === 5 ? 'Jetzt auf ' + c.legs[1].h + ' Fuß' : 'In 30 Sekunden auf ' + c.legs[1].h + ' Fuß');
   }
-  countdown('drop' + t.id, dr && dr.time != null ? dr.time : null, [30, 10, 3], mk => { if (mk !== 3) return 'Abwurf in ' + mk + ' Sekunden'; const lm = loggerFor(activeTask(), 'mark'); if (lm) showLogger('Abwurf: Loggermarker ' + lm + ' setzen'); return 'Abwurf jetzt' + (lm ? ', Loggermarker ' + lm : ''); });
+  countdown('drop' + t.id, dr && dr.time != null ? dr.time : null, [30, 10, 3], mk => { if (mk !== 3) return 'Abwurf in ' + mk + ' Sekunden'; const lm = loggerFor(activeTask(), 'mark'); const tk = activeTask(), how = tk && tk.drop === 'gravity' ? ' fallen lassen' : tk && tk.drop === 'free' ? ', frei werfen' : ''; if (lm) showLogger('Abwurf' + how + ': Loggermarker ' + lm + ' setzen'); return 'Abwurf jetzt' + how + (lm ? ', Loggermarker ' + lm : ''); });
   const r = (t.radii || []).find(x => d <= x) || null;
   if (lastCircle.id !== t.id) lastCircle = { id:t.id, r };
   else if (r !== lastCircle.r) { if (r && (lastCircle.r == null || r < lastCircle.r)) say('Im ' + r + ' Meter Kreis'); lastCircle.r = r; }
@@ -2621,7 +2645,7 @@ $('#rs-go').addEventListener('click', e => confirmBtn(e.currentTarget, 'Fahrt-Pu
   setText('tl-msg', r.n + (r.n === 1 ? ' Punkt' : ' Punkte') + ' gelöscht, ' + r.kept + ' gesperrte behalten.');
 }));
 function renderBrief(){
-  setText('br-ts-state', S.tasks.length ? 'Geladen: ' + S.tasks.length + (S.tasks.length === 1 ? ' Task' : ' Tasks') + (S.flight.launchFrom ? ', Start ' + S.flight.launchFrom + (S.flight.launchTo ? '–' + S.flight.launchTo : '') : '') : 'Noch kein Task Sheet.');
+  setText('br-ts-state', (S.flight.info && flightInfoText(S.flight.info) ? flightInfoText(S.flight.info) + '. ' : '') + (S.tasks.length ? 'Geladen: ' + S.tasks.length + (S.tasks.length === 1 ? ' Task' : ' Tasks') + (S.flight.launchFrom ? ', Start ' + S.flight.launchFrom + (S.flight.launchTo ? '–' + S.flight.launchTo : '') : '') : 'Noch kein Task Sheet.'));
   const nb = S.windManual.filter(w => w.src === 'b').length;
   setText('br-wx-state', nb ? 'Geladen: ' + nb + ' Höhen mit Wind.' : 'Noch kein Wetterbericht.');
 }
@@ -2679,6 +2703,7 @@ function checks(){
   out.push({ ok: st.groundFt > 0 || S.targets.some(t => t.elevFt != null), txt:'Bodenhöhe', sub:'allgemein ' + st.groundFt + ' ft' + (S.targets.some(t => t.elevFt != null) ? ', bei einzelnen Zielen eigene' : ''), act:['Einstellen', openers.settings] });
   out.push({ ok: !!ckTicks.rates, manual:'rates', txt:'Steig- und Sinkrate, Grenzen', sub: fpmToMs(st.climbFpm) + ' / ' + fpmToMs(st.sinkFpm) + ' m/s, ' + st.minAltFt + ' bis ' + st.maxAltFt + ' ft' });
   out.push({ ok: !!ckTicks.fall, manual:'fall', txt:'Fallgeschwindigkeit Marker', sub: String(st.fallMs).replace('.', ',') + ' m/s' });
+  if (S.flight.info && S.flight.info.qnh) out.push({ ok: !!ckTicks.qnh, manual:'qnh', txt:'Höhenmesser auf QNH ' + S.flight.info.qnh + ' hPa', sub:'laut Briefing' });
   out.push({ ok: S.tasks.length > 0, txt:'Task Sheet', sub: S.tasks.length ? S.tasks.length + (S.tasks.length === 1 ? ' Task' : ' Tasks') + (S.flight.launchFrom ? ', Start ' + S.flight.launchFrom + (S.flight.launchTo ? '–' + S.flight.launchTo : '') : ', Startfenster fehlt') : 'noch kein Task eingetragen', act:['Öffnen', openers.tasks] });
   out.push({ ok: S.pz.length > 0 || !!ckTicks.pz, manual: S.pz.length ? null : 'pz', txt:'Sperrgebiete', sub: S.pz.length ? S.pz.length + ' eingetragen' : 'keine eingetragen, bestätigen falls es keine gibt' });
   const nw = windProfile().length;
@@ -2760,7 +2785,20 @@ function parseTaskSheet(text, launchHint){
   const res = { launchFrom:'', launchTo:'', tasks:[], pz:[], wind:[] };
   let cur = null, inPz = false, inWind = false, wUnit = 'kt', colTimes = [], wTok = [];
   const lines = text.split(/\r?\n/).map(l => l.replace(/\s+/g, ' ').trim()).filter(Boolean);
+  res.info = {};
   for (const line of lines) {
+    { const I = res.info, g = (re) => { const m = line.match(re); return m ? m : null; };
+      let m;
+      if (!I.flightNo && (m = g(/\bFlight\s*(?:no\.?\s*)?(\d{1,3})\b/i))) I.flightNo = m[1];
+      if (!I.date && (m = g(/\b(\d{1,2})[\/.](\d{1,2})[\/.](20\d\d)\b/))) I.date = pad(+m[1], 2) + '.' + pad(+m[2], 2) + '.' + m[3];
+      if (!I.qnh && (m = g(/\bQNH\s*:?\s*(\d{3,4})\b/i))) I.qnh = +m[1];
+      if (!I.sunrise && (m = g(/Sunrise\s*\/\s*Sunset\s*(\d{1,2}:\d{2})\s*\/\s*(\d{1,2}:\d{2})/i))) { I.sunrise = hhmmOf(m[1]); I.sunset = hhmmOf(m[2]); }
+      if (!I.nextBrief && (m = g(/Next\s*briefing\s*(\d{1,2}[:.]\d{2})/i))) I.nextBrief = hhmmOf(m[1]);
+      if (!I.pzInfo && (m = g(/PZs?\s*in\s*force\s*(.+?)(?=\s+(?:Solo|QNH|Launch|Sunrise|Next|Min\.)|$)/i))) I.pzInfo = m[1].trim();
+      if (!I.solo && (m = g(/Solo\s*flight\s*(not\s*required|required)/i))) I.solo = /not/i.test(m[1]) ? 'nicht nötig' : 'verlangt';
+      if (!I.launchArea && (m = g(/Launch\s*area\s*(.+?)(?=\s+(?:PZs?\b|Launch\s*period|Solo|QNH)|$)/i))) I.launchArea = m[1].trim();
+    }
+    if (cur) cur.raw = (cur.raw || '') + ' ' + line;
     const tm = line.match(/(\d{1,2}[:.]\d{2})\s*(?:-|–|—|bis|to|until)\s*(\d{1,2}[:.]\d{2})/i);
     const head = line.match(/\b(?:task|aufgabe|t)\s*(?:no\.?|nr\.?|#)?\s*(\d{1,2})\b/i) || line.match(/^(\d{1,2})[.)]?\s/);
     const type = detectType(line);
@@ -2815,6 +2853,8 @@ function parseTaskSheet(text, launchHint){
     const lm = line.match(/logger\s*marker\s*:?\s*#?(\d+(?:\s*,\s*\d+)*)\s*$/i); if (lm) cur.note = (cur.note ? cur.note + ', ' : '') + 'LM ' + lm[1].replace(/\s/g, '');
     const lg = line.match(/logger\s*goal\s*:?\s*#?(\d+)\s*$/i); if (lg) cur.note = (cur.note ? cur.note + ', ' : '') + 'LG ' + lg[1];
     const mma = line.match(/\bMMA\s*[:=]?\s*R?\s*(\d+)/i); if (mma) cur.mma = +mma[1];
+    const mdp = line.match(/marker\s*drop\s*:?\s*(gravity|free)/i); if (mdp) cur.drop = mdp[1].toLowerCase();
+    const sca = line.match(/scoring\s*area\s*:?\s*(.+?)(?=\s{2,}|$)/i); if (sca && !cur.area) cur.area = sca[1].trim().slice(0, 40);
     const mal = line.match(/(?:at\s*least|mindestens|min\.?)\s*(\d{3,5})\s*ft/i); if (mal) cur.minAlt = +mal[1];
     const mdc = line.match(/max\.?\s*(\d+)\s*(?:valid\s*)?declarations?/i); if (mdc) cur.maxDecl = +mdc[1];
     const mcl = line.match(/marker\s*colou?r\s*[:\-]?\s*(red|white|blue|green|yellow|orange|black|purple|violet)/i); if (mcl && !cur.mcolor) cur.mcolor = mcl[1].toLowerCase();
@@ -2828,6 +2868,17 @@ function parseTaskSheet(text, launchHint){
     }
   }
   if (!res.wind.length && wTok.length >= 3) res.wind = windFromTokens(wTok, wUnit);
+  const PI = { A:0, B:1, C:2, D:3 }, km = (v, u) => Math.round(parseFloat(v.replace(',', '.')) * (/km/i.test(u) ? 1000 : 1));
+  for (const k of res.tasks) {
+    const raw = (k.raw || '').replace(/\s+/g, ' '); k.rules = [];
+    const re = /track\s*point\s*"?([A-D])"?(.*?)(?=track\s*point\s*"?[A-D]"?|MMA|NOTES|$)/gi; let m;
+    while ((m = re.exec(raw))) {
+      const seg = m[2], to = PI[m[1].toUpperCase()];
+      const mn = seg.match(/min\.?\s*(\d+(?:[.,]\d+)?)\s*(km|m)\b/i), mx = seg.match(/max\.?\s*(\d+(?:[.,]\d+)?)\s*(km|m)\b/i), fr = seg.match(/from\s*point\s*"?([A-D])"?/i);
+      if (fr && (mn || mx)) k.rules.push({ to, from:PI[fr[1].toUpperCase()], min: mn ? km(mn[1], mn[2]) : null, max: mx ? km(mx[1], mx[2]) : null });
+    }
+    delete k.raw;
+  }
   if (res.wind.some(w => w.cols)) {
     const lfs = res.launchFrom || launchHint || '', lf = lfs ? lfs.split(':').map(Number) : null;
     const tgt = lf ? lf[0] * 60 + lf[1] + 30 : new Date().getHours() * 60 + new Date().getMinutes();
@@ -2886,13 +2937,14 @@ function normTs(r){
   const tme = v => /^\d{1,2}[:.]\d{2}$/.test(s(v).trim()) ? hhmmOf(s(v).trim()) : '';
   return {
     windInfo: s(r && r.windInfo),
-    minIlp: n(r && r.minIlp),
+    minIlp: n(r && r.minIlp), info: (r && typeof r.info === 'object' && r.info) ? r.info : {}, qnh: n(r && r.qnh),
     launchFrom: tme(r && r.launchFrom), launchTo: tme(r && r.launchTo),
     tasks: (Array.isArray(r && r.tasks) ? r.tasks : []).map((k, i) => ({
       nr: n(k.nr) || i + 1, type: TT_CODES.includes(s(k.type).toUpperCase()) ? s(k.type).toUpperCase() : '---',
       goals: (Array.isArray(k.goals) ? k.goals : []).filter(g => g && s(g.code)).map(g => ({ name:s(g.name).slice(0, 30), code:s(g.code).replace(/\s/g, ''), altFt:n(g.altFt) })),
       from: tme(k.from), to: tme(k.to), mma:n(k.mma), dir:n(k.dir), limit:n(k.limit), note:s(k.note).slice(0, 100),
-      minAlt:n(k.minAlt), maxDecl:n(k.maxDecl), mcolor:s(k.mcolor).toLowerCase() })),
+      minAlt:n(k.minAlt), maxDecl:n(k.maxDecl), mcolor:s(k.mcolor).toLowerCase(), drop:s(k.drop).toLowerCase(), area:s(k.area).slice(0, 40),
+      rules:(Array.isArray(k.rules) ? k.rules : []).map(q => ({ to:n(q.to), from:n(q.from), min:n(q.min), max:n(q.max) })).filter(q => q.to != null && q.from != null && (q.min || q.max)) })),
     wind: (Array.isArray(r && r.wind) ? r.wind : []).map(w => ({ range: !!(w && w.range), alt: /^(sfc|surface|ground|gnd|boden)$/i.test(s(w.alt)) ? 'SFC' : n(w.alt), from:n(w.from), speed:n(w.speed), unit: ['kt', 'kmh', 'ms'].includes(s(w.unit)) ? s(w.unit) : 'kt' }))
       .filter(w => w.alt != null && w.from != null && w.speed != null && w.from <= 360),
     pz: (Array.isArray(r && r.pz) ? r.pz : []).map((z, i) => ({ name:s(z.name) || 'PZ ' + (i + 1), type: z.type === 'poly' ? 'poly' : 'circle',
@@ -2934,6 +2986,8 @@ function tsPrompt(text, nImg){
     '{"launchFrom":"HH:MM","launchTo":"HH:MM","wind":[{"alt":"SFC","from":220,"speed":5,"unit":"kt"},{"alt":1000,"from":240,"speed":8,"unit":"kt"}],"tasks":[{"nr":1,"type":"PDG","goals":[{"name":"","code":"1234/5678","altFt":null}],"from":"HH:MM","to":"HH:MM","mma":null,"dir":null,"limit":null,"note":""}],"pz":[{"name":"PZ 1","type":"circle","center":"1234/5678","r":500,"pts":[],"ceil":null}]}\n' +
     'Regeln: type ist einer von ' + TT_CODES.join(', ') + ' oder "---". Koordinaten genau so übernehmen wie gedruckt (4/4, 5/5 oder 6/7 mit Schrägstrich). launchFrom/launchTo = Startfenster. from/to = Wertungszeitraum (scoring period) des Tasks. ' +
     'mma in Metern. dir = vorgegebene Richtung in Grad (bei Angle). limit = Mindest- oder Maximaldistanz in Metern. pz = Sperrgebiete: Kreis mit center und r in Metern oder Fläche (type "poly") mit pts; ceil = Höhengrenze in ft. ' +
+    'Kopfdaten zusätzlich als "info":{"flightNo":"4","date":"24.09.2026","qnh":1019,"sunrise":"06:21","sunset":"18:26","nextBrief":"15:00","pzInfo":"all active","solo":"nicht nötig","launchArea":"individual launch"}. ' +
+    'Je Task zusätzlich: drop = "gravity" oder "free" (Marker drop), area = Scoring area kurz, rules = Abstandsregeln zwischen Track-Punkten als [{"to":1,"from":0,"min":3000,"max":5000}] mit A=0, B=1, C=2. ' +
     'Zusätzlich je Task, falls angegeben: minAlt = Mindesthöhe deklarierter Ziele in ft, maxDecl = erlaubte Anzahl Deklarationen, mcolor = Markerfarbe auf Englisch (red, white …, nicht bei any). Im Kopf: minIlp = Mindestabstand Startpunkt zu Zielen in Metern. ' +
     'goals: altFt = Geländehöhe des Ziels in ft (z. B. "4492/0389 · 955 ft" → altFt 955), name = Zielbuchstabe mit Nummer wie gedruckt (z. B. "A 212"). from leer lassen, wenn nur das Ende der Wertung angegeben ist ("Scoring period ends at 07:30" → to "07:30"). Loggermarker oder Loggergoal kurz in note ("LM 1"). ' +
     'wind = Winddaten aus dem Briefing je Höhe; GND bedeutet "SFC"; gibt es mehrere Vorhersagezeiten, die Werte für etwa 30 Minuten nach Beginn des Startfensters zwischen den Spalten interpolieren, sonst die erste Spalte;  alt in ft wie gedruckt oder "SFC" für Boden, from = Richtung aus der der Wind kommt in Grad, speed und unit genau wie gedruckt (kt, kmh oder ms). note = kurze wichtige Zusatzinfo, höchstens 100 Zeichen. Unbekanntes als "" oder null lassen, nichts erfinden.\n\n' +
@@ -2951,7 +3005,7 @@ async function readTaskSheet(){
   }
   if (!res && text) { res = normTs(parseTaskSheet(text, impMode === 'wx' ? S.flight.launchFrom : '')); }
   if (!res) { if (tsImages.length) tiStatus('Fotos lassen sich nur in der Claude-Version auslesen. Lade das Task Sheet als PDF oder füge den Text ein.'); return; }
-  if (impMode === 'wx') { res.tasks = []; res.pz = []; res.launchFrom = ''; res.launchTo = ''; } else { res.wind = []; res.windInfo = ''; }
+  if (impMode === 'wx') { res.tasks = []; res.pz = []; res.launchFrom = ''; res.launchTo = ''; res.info = res.info && res.info.qnh ? { qnh:res.info.qnh } : {}; } else { res.wind = []; res.windInfo = ''; }
   tsResult = res; renderTsPreview();
 }
 function renderTsPreview(){
@@ -2961,9 +3015,10 @@ function renderTsPreview(){
   if (!r.tasks.length && !r.pz.length && !r.launchFrom && !r.wind.length) { tiStatus(impMode === 'wx' ? 'Im Wetterbericht wurden keine Winddaten erkannt. Prüfe den Text oder trag Pibal-Werte von Hand ein.' : 'Im Task Sheet wurde nichts erkannt. Prüfe den Text oder trag die Tasks von Hand ein.'); return; }
   tiStatus(impMode === 'wx' ? 'Erkannt: ' + r.wind.length + ' Höhen mit Wind. Bitte prüfen.' : 'Erkannt: ' + r.tasks.length + (r.tasks.length === 1 ? ' Task' : ' Tasks') + ', ' + r.tasks.reduce((a, k) => a + k.goals.length, 0) + ' Ziele, ' + r.pz.length + ' Sperrgebiete. Bitte prüfen.');
   if (r.launchFrom) add('ti-row', 'Startfenster ' + r.launchFrom + (r.launchTo ? '–' + r.launchTo : ''));
+  { const t = flightInfoText(r.info || {}); if (t) add('ti-row', t); }
   for (const k of r.tasks) {
     const g = k.goals.map(x => { const c = parseCoord(x.code); if (!c) bad.push(x.code); return x.code + (c ? '' : ' (?)') + (x.altFt ? ' Boden ' + x.altFt + ' ft' : ''); }).join(', ');
-    add('ti-row', 'T' + k.nr + ' ' + k.type + (k.mcolor ? '  Marker ' + (PAL.find(p => p[0] === EN_COL[k.mcolor]) || ['', k.mcolor])[1] : '') + (k.minAlt ? '  min. ' + k.minAlt + ' ft' : '') + (k.maxDecl ? '  max. ' + k.maxDecl + ' Dekl.' : '') + (k.from ? '  ' + k.from + '–' + k.to : k.to ? '  bis ' + k.to : '') + (k.mma ? '  MMA ' + k.mma + ' m' : '') + (k.dir != null ? '  Richtung ' + k.dir + '°' : '') + (k.limit ? '  Distanz ' + fmtDist(k.limit) : '') + (g ? '\nZiele: ' + g : '') + (k.note ? '\n' + k.note : ''));
+    add('ti-row', 'T' + k.nr + ' ' + k.type + (k.drop ? (k.drop === 'gravity' ? '  fallen lassen' : '  frei werfen') : '') + (k.rules && k.rules.length ? '  Abstände: ' + k.rules.map(ruleText).join(', ') : '') + (k.mcolor ? '  Marker ' + (PAL.find(p => p[0] === EN_COL[k.mcolor]) || ['', k.mcolor])[1] : '') + (k.minAlt ? '  min. ' + k.minAlt + ' ft' : '') + (k.maxDecl ? '  max. ' + k.maxDecl + ' Dekl.' : '') + (k.from ? '  ' + k.from + '–' + k.to : k.to ? '  bis ' + k.to : '') + (k.mma ? '  MMA ' + k.mma + ' m' : '') + (k.dir != null ? '  Richtung ' + k.dir + '°' : '') + (k.limit ? '  Distanz ' + fmtDist(k.limit) : '') + (g ? '\nZiele: ' + g : '') + (k.note ? '\n' + k.note : ''));
   }
   if (r.wind.length) add('ti-row wind', 'Wind aus dem Briefing' + (r.windInfo ? '\n' + r.windInfo : '') + '\n' + r.wind.map(w => (w.alt === 'SFC' ? 'Boden' : w.alt + ' ft') + ': aus ' + pad(Math.round(w.from), 3) + '°, ' + w.speed + ' ' + ({ kt:'kt', kmh:'km/h', ms:'m/s' })[w.unit] + (w.unit === 'kmh' ? '' : ' = ' + Math.round(windKmh(w)) + ' km/h') + (w.range ? ' (Mittel aus Bereich)' : '')).join('\n'));
   for (const z of r.pz) add('ti-row pz', z.name + ': ' + (z.type === 'poly' ? z.pts.length + ' Eckpunkte' : z.center + ', Radius ' + fmtR(z.r)) + (z.ceil ? ', bis ' + z.ceil + ' ft' : ''));
@@ -2981,6 +3036,7 @@ function applyTaskSheet(){
       S.windManual = S.windManual.filter(x => Math.abs(x.alt - alt) >= 10);
       S.windManual.push({ alt, from:((w.from % 360) + 360) % 360, kmh:Math.round(windKmh(w) * 10) / 10, t:Date.now(), src:'b' }); n++;
     }
+    if (r.info && r.info.qnh) S.flight.info = { ...(S.flight.info || {}), qnh:r.info.qnh };
     invalidatePlan(); save(); closeSheets(); renderWind(); openSheet('#sheet-wind'); updateHud(); requestDraw();
     setText('wd-msg', n + (n === 1 ? ' Höhe' : ' Höhen') + ' aus dem Wetterbericht übernommen, in der Tabelle mit B gekennzeichnet.' + (r.windInfo ? ' ' + r.windInfo : ''));
     return;
@@ -2988,6 +3044,7 @@ function applyTaskSheet(){
   if ($('#ti-replace').checked) { S.tasks = []; S.activeTaskId = null; }
   if (r.launchFrom) S.flight = { launchFrom:r.launchFrom, launchTo:r.launchTo };
   if (r.minIlp) S.flight.minIlp = r.minIlp;
+  if (r.info && Object.keys(r.info).length) S.flight.info = { ...(S.flight.info || {}), ...r.info };
   let nT = 0;
   for (const k of r.tasks) {
     const ids = [];
@@ -2999,7 +3056,7 @@ function applyTaskSheet(){
       S.targets.push(t); ids.push(t.id); nT++;
     });
     const old = S.tasks.find(x => x.nr === k.nr);
-    const task = { id: old ? old.id : uid(), nr:k.nr, type:k.type, targets:ids, from:k.from, to:k.to, mma:k.mma, note:k.note, dir:k.dir, limit:k.limit, minAlt:k.minAlt, maxDecl:k.maxDecl, mcolor:k.mcolor, marks: old ? old.marks || [] : [], decl: old ? old.decl || [] : [] };
+    const task = { id: old ? old.id : uid(), nr:k.nr, type:k.type, targets:ids, from:k.from, to:k.to, mma:k.mma, note:k.note, dir:k.dir, limit:k.limit, minAlt:k.minAlt, maxDecl:k.maxDecl, mcolor:k.mcolor, drop:k.drop, area:k.area, rules:k.rules, marks: old ? old.marks || [] : [], decl: old ? old.decl || [] : [] };
     if (old) Object.assign(old, task); else S.tasks.push(task);
   }
   let nP = 0;
@@ -3191,10 +3248,11 @@ $('#btn-view').addEventListener('click', () => setLayer(layer === 'anflug' ? 'pl
 function openAltSheet(){
   closeSheets();
   const st = S.settings, man = manualAlt(), gps = st.mode === 'gps' && pos && (pos.rawAltFt != null || man), off = Math.round(st.altOffsetFt);
-  $('#al-state').textContent = st.mode !== 'gps' ? 'Der Abgleich gilt für GPS. In der Simulation gibt es keine Abweichung.'
+  const qn = S.flight.info && S.flight.info.qnh ? ' QNH laut Briefing: ' + S.flight.info.qnh + ' hPa.' : '';
+  $('#al-state').textContent = (st.mode !== 'gps' ? 'Der Abgleich gilt für GPS. In der Simulation gibt es keine Abweichung.'
     : !pos ? 'Noch keine GPS-Position vorhanden.'
     : man ? 'Dein Gerät liefert keine GPS-Höhe. Trag hier deine Höhe vom Höhenmesser ein und passe sie in der Fahrt links unten mit ▲/▼ an. Aktuell: ' + Math.round(st.manualAltFt || 0) + ' ft.'
-    : 'GPS-Höhe ' + Math.round(pos.rawAltFt) + ' ft, Korrektur ' + (off >= 0 ? '+' : '') + off + ' ft, angezeigt ' + Math.round(pos.altFt) + ' ft.';
+    : 'GPS-Höhe ' + Math.round(pos.rawAltFt) + ' ft, Korrektur ' + (off >= 0 ? '+' : '') + off + ' ft, angezeigt ' + Math.round(pos.altFt) + ' ft.') + qn;
   $('#al-val').value = ''; $('#al-ok').disabled = !gps;
   openSheet('#sheet-alt'); if (gps) setTimeout(() => $('#al-val').focus(), 60);
 }
@@ -3329,6 +3387,7 @@ function nextEvent(){
     const a = timeToday(k.from), b = timeToday(k.to);
     if (a) ev.push({ t:a, text:'T' + k.nr + ' beginnt', task:k.id }); if (b) ev.push({ t:b, text:'T' + k.nr + ' endet', task:k.id });
   }
+  { const nb = timeToday(S.flight.info && S.flight.info.nextBrief); if (nb) ev.push({ t:nb, text:'Briefing' }); }
   const fut = ev.filter(e => e.t > now).sort((x, y) => x.t - y.t);
   const own = S.activeTaskId && fut.find(e => e.task === S.activeTaskId);
   return own || fut[0] || null;
@@ -3344,6 +3403,7 @@ function updateClock(){
 }
 function renderTasks(){
   $('#fl-from').value = S.flight.launchFrom; $('#fl-to').value = S.flight.launchTo;
+  setText('ts-info', flightInfoText(S.flight.info));
   const ul = $('#tasklist'); ul.innerHTML = '';
   if (!S.tasks.length) { ul.innerHTML = '<li class="empty">Noch keine Tasks. Trag die Tasks vom Task Sheet des Briefings ein.</li>'; return; }
   for (const k of [...S.tasks].sort((a, b) => a.nr - b.nr)) {
@@ -3353,7 +3413,7 @@ function renderTasks(){
     nm.textContent = 'T' + k.nr + ' ' + k.type + ' ' + (TASK_TYPES.find(x => x[0] === k.type) || ['', ''])[1];
     const sub = document.createElement('div'); sub.className = 'sub';
     const names = k.targets.map(id => (S.targets.find(t => t.id === id) || {}).name).filter(Boolean);
-    sub.textContent = [names.join(', ') || 'kein Ziel', (k.from || k.to) ? (k.from || '…') + '–' + (k.to || '…') : '', k.mma ? 'MMA ' + k.mma + ' m' : '', k.note].filter(Boolean).join('   ');
+    sub.textContent = [names.join(', ') || 'kein Ziel', (k.from || k.to) ? (k.from || '…') + '–' + (k.to || '…') : '', k.mma ? 'MMA ' + k.mma + ' m' : '', k.drop ? (k.drop === 'gravity' ? 'fallen lassen' : 'frei werfen') : '', k.area && !/entire/i.test(k.area) ? 'Gebiet: ' + k.area : '', k.rules && k.rules.length ? k.rules.map(ruleText).join(', ') : '', k.note].filter(Boolean).join('   ');
     meta.append(nm, sub);
     const go = document.createElement('button'); go.className = 'btn small'; go.textContent = k.id === S.activeTaskId ? 'Beenden' : 'Fliegen';
     go.addEventListener('click', () => {
