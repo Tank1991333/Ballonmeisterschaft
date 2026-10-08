@@ -188,6 +188,9 @@ input[type=range]{padding:0;border:0;background:none;accent-color:var(--ink)}
 .checkrow{display:flex;gap:.6rem;align-items:center;font-weight:600;margin:.2rem 0 .7rem}
 .checkrow input{width:1.3rem;height:1.3rem;accent-color:var(--ink)}
 .wtab td.old{color:var(--warn)}
+.gpsbar{display:flex;align-items:center;gap:.6rem;background:var(--panel);border:1.5px solid var(--warn);border-left:5px solid var(--warn);border-radius:12px;padding:.5rem .5rem .5rem .75rem;font-size:.92rem;line-height:1.3}
+.gpsbar.wait{border-color:var(--panel-edge);border-left-color:var(--ink-2)}
+.gpsbar span{flex:1}
 .ti-row{border:1.5px solid var(--panel-edge);border-left:5px solid var(--ink);border-radius:9px;padding:.5rem .65rem;margin:.35rem 0;font-family:var(--num);font-size:1.02rem;white-space:pre-line}
 .ti-row.pz{border-left-color:var(--pz)}
 .ti-row.wind{border-left-color:var(--track)}
@@ -261,6 +264,25 @@ input[type=range]{padding:0;border:0;background:none;accent-color:var(--ink)}
 </style>
 </head>
 <body>
+<div id="fatal" hidden style="position:fixed;left:1rem;right:1rem;bottom:1rem;z-index:99;background:#C0392B;color:#fff;padding:1rem;border-radius:12px;font-family:system-ui,sans-serif;line-height:1.35">
+  <b>Die App konnte nicht starten.</b>
+  <div id="fatal-msg" style="margin:.4rem 0 .7rem;font-size:.9rem;word-break:break-word"></div>
+  <button onclick="location.reload()" style="padding:.6rem .9rem;border-radius:8px;border:0;font-weight:600">Neu laden</button>
+  <button id="fatal-reset" style="padding:.6rem .9rem;border-radius:8px;border:0;font-weight:600;margin-left:.4rem">Gespeicherte Daten löschen</button>
+</div>
+<script>
+(function(){
+  function show(m){ var el = document.getElementById('fatal'); if (!el || window.__wfStarted) return; el.hidden = false; document.getElementById('fatal-msg').textContent = m; }
+  window.addEventListener('error', function(e){ show((e.message || 'Unbekannter Fehler') + (e.lineno ? ' (Zeile ' + e.lineno + ')' : '')); });
+  setTimeout(function(){ if (!window.__wfStarted) show('Das Programm wurde nicht vollständig geladen. Prüfe, ob die Datei index.html vollständig hochgeladen wurde.'); }, 6000);
+  document.getElementById('fatal-reset').onclick = function(){
+    if (!confirm('Alle gespeicherten Ziele, Tasks und Einstellungen auf diesem Gerät löschen?')) return;
+    try { localStorage.removeItem('wettfahrt-v1'); } catch (e) {}
+    try { indexedDB.deleteDatabase('wettfahrt'); } catch (e) {}
+    location.reload();
+  };
+})();
+</script>
 
 <header class="top" id="topbar">
   <button class="chip" id="status" data-state="sim">Sim</button>
@@ -276,6 +298,7 @@ input[type=range]{padding:0;border:0;background:none;accent-color:var(--ink)}
   <canvas id="map" aria-label="Wettbewerbskarte mit UTM-Gitter"></canvas>
   <div class="overlay">
     <div class="alert" id="alert" role="alert" hidden></div>
+    <div class="gpsbar" id="gpsbar" hidden><span id="gps-text"></span><button class="btn small" id="gps-retry" style="flex:0 0 auto">Erneut versuchen</button></div>
     <div class="crewcard" id="crewcard" hidden></div>
     <div class="hint" id="hint" hidden><span id="hint-text"></span><button class="ghost" id="hint-cancel" hidden>Abbrechen</button><button id="hint-done">Fertig</button></div>
     <div class="cursorbar" id="cursorbar" hidden><div class="cb-t"><span id="cb-code"></span><small id="cb-info"></small></div><button class="btn small" id="cb-add">Ziel hier</button></div>
@@ -368,6 +391,7 @@ input[type=range]{padding:0;border:0;background:none;accent-color:var(--ink)}
       <button data-open="log"><b>Logbuch</b><small id="mt-log"></small></button>
       <button data-open="settings"><b>Einstellungen</b><small id="mt-set"></small></button>
     </div>
+    <p class="note" style="text-align:center;margin-top:.9rem">Version 2026-10-08</p>
   </div>
 </div>
 
@@ -994,9 +1018,10 @@ function windProfile(){
     rows[k] = { alt:+k, u:b.u, v:b.v, age, src:'m' };
   }
   for (const m of S.windManual) {
-    const k = String(Math.round(m.alt / 100) * 100), to = (m.from + 180) * RAD, sp = m.kmh / 3.6, age = (Date.now() - m.t) / 60000;
+    const alt = Math.round(m.alt), k = 'x' + alt, to = (m.from + 180) * RAD, sp = m.kmh / 3.6, age = (Date.now() - m.t) / 60000;
     if (age > (m.src === 'b' ? Math.max(S.settings.windMaxAge, 180) : S.settings.windMaxAge)) continue;
-    if (!rows[k] || rows[k].age > age) rows[k] = { alt:+k, u:Math.sin(to) * sp, v:Math.cos(to) * sp, age, src: m.src === 'b' ? 'br' : 'p' };
+    if (Object.values(rows).some(r => r.src === 'm' && Math.abs(r.alt - alt) < 60 && r.age < age)) continue;
+    if (!rows[k] || rows[k].age > age) rows[k] = { alt, u:Math.sin(to) * sp, v:Math.cos(to) * sp, age, src: m.src === 'b' ? 'br' : 'p' };
   }
   return Object.values(rows).sort((a, b) => b.alt - a.alt);
 }
@@ -1234,23 +1259,56 @@ function stopSim(){ clearInterval(simTimer); simTimer = null; }
 
 /* ---------- GPS ---------- */
 let watchId = null;
+function gpsBar(text, wait){
+  const el = $('#gpsbar');
+  if (!text) { el.hidden = true; return; }
+  el.hidden = false; el.classList.toggle('wait', !!wait); setText('gps-text', text);
+}
+const isIOS = () => /iPhone|iPad|iPod/.test(navigator.userAgent) || (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
+let gpsRetry = null;
 function startGps(){
-  fixes = []; pos = null; updateHud(); requestDraw();
-  if (!('geolocation' in navigator)) { setStatus('Kein GPS', 'warn'); return; }
-  setStatus('GPS sucht …', '');
+  fixes = []; pos = null; updateHud(); requestDraw(); clearTimeout(gpsRetry);
+  if (!window.isSecureContext) { setStatus('Kein GPS', 'warn'); gpsBar('GPS geht nur, wenn die Seite über https geöffnet wird, z. B. https://deinname.github.io/…'); return; }
+  if (!('geolocation' in navigator)) { setStatus('Kein GPS', 'warn'); gpsBar('Dieser Browser bietet kein GPS an.'); return; }
+  setStatus('GPS sucht …', ''); gpsBar('Warte auf GPS-Signal. Im Freien dauert das meist unter einer Minute.', true);
+  let first = true;
   watchId = navigator.geolocation.watchPosition(p => {
-    const c = p.coords; let z = S.settings.zone;
+    const c = p.coords; let z = S.settings.zone; const zPrev = z;
     if (S.settings.zoneAuto) { z = zoneOf(c.longitude); if (z !== S.settings.zone) S.settings.zone = z; }
     const u = ll2utm(c.latitude, c.longitude, z);
+    if (first) {
+      first = false; gpsBar('');
+      const last = S.track[S.track.length - 1];
+      if (last && Math.hypot(last[0] - u.E, last[1] - u.N) > 5000) S.track = [];
+      if (zPrev !== z || Math.hypot(u.E - S.settings.refE, u.N - S.settings.refN) > 100000) {
+        S.settings.refE = Math.round(u.E); S.settings.refN = Math.round(u.N);
+        const demoT = t => (t.name === 'Ziel A' && Math.round(t.E) === 504200 && Math.round(t.N) === 5501600) || (t.name === 'Ziel B' && Math.round(t.E) === 506500 && Math.round(t.N) === 5498200);
+        S.targets = S.targets.filter(t => !demoT(t)); if (!S.targets.some(t => t.id === S.activeId)) S.activeId = null;
+        S.pz = S.pz.filter(z => !(z.name === 'PZ 1' && Math.round(z.E) === 502600 && Math.round(z.N) === 5499700));
+        invalidatePlan();
+      }
+      save();
+      setFollow(true);
+    }
     const raw = c.altitude != null ? c.altitude / FT : null;
     pushFix({ E:u.E, N:u.N, altFt: raw != null ? raw + S.settings.altOffsetFt : null, rawAltFt:raw, t: p.timestamp || Date.now() });
     lastAcc = c.accuracy; lastLon = c.longitude;
     setStatus('GPS ±' + Math.round(c.accuracy) + ' m', c.accuracy <= 30 ? 'ok' : 'warn');
   }, err => {
-    setStatus(err.code === 1 ? 'GPS nicht erlaubt' : 'Kein GPS-Signal', 'warn');
-  }, { enableHighAccuracy:true, maximumAge:1000, timeout:20000 });
+    if (err.code === 1) {
+      setStatus('GPS nicht erlaubt', 'warn');
+      gpsBar(isIOS() ? 'Standort nicht erlaubt. iPhone: Einstellungen → Datenschutz & Sicherheit → Ortungsdienste einschalten → Safari-Websites → „Beim Verwenden“. Dann in Safari auf „aA“ → Website-Einstellungen → Standort → Erlauben.'
+                     : 'Standort nicht erlaubt. Tippe links neben der Adresse auf das Schloss → Berechtigungen → Standort → Zulassen, und schalte am Handy den Standort ein.');
+    } else if (err.code === 2) {
+      setStatus('Kein GPS-Signal', 'warn'); gpsBar('Position nicht verfügbar. Prüfe, ob der Standort am Gerät eingeschaltet ist. Neuer Versuch in 10 Sekunden.');
+      clearTimeout(gpsRetry); gpsRetry = setTimeout(() => { if (S.settings.mode === 'gps' && !pos) { stopGps(); startGps(); } }, 10000);
+    } else if (!pos) {
+      setStatus('Kein GPS-Signal', 'warn'); gpsBar('Noch kein GPS-Signal. Geh ins Freie oder warte etwas, die Suche läuft weiter.', true);
+    }
+  }, { enableHighAccuracy:true, maximumAge:1000, timeout:30000 });
 }
-function stopGps(){ if (watchId != null) navigator.geolocation.clearWatch(watchId); watchId = null; }
+$('#gps-retry').addEventListener('click', () => { stopGps(); startGps(); });
+function stopGps(){ if (watchId != null) navigator.geolocation.clearWatch(watchId); watchId = null; clearTimeout(gpsRetry); gpsBar(''); }
 function applyMode(){
   stopSim(); stopGps();
   if (S.settings.mode === 'gps') startGps(); else startSim();
@@ -2371,11 +2429,20 @@ function parseTaskSheet(text){
     if (inWind) {
       const ts = [...line.matchAll(/(\d{1,2})[.:](\d{2})\s*(?:LT|UTC|Z|Uhr)/gi)];
       if (ts.length >= 2) { colTimes = ts.map(t => +t[1] * 60 + +t[2]); continue; }
-      const row = line.match(/^(GND|SFC|surface|ground|boden|\d{3,5})\s*(?:ft)?\s+(\d{3})\s*°?\s*[\/ ]\s*(\d{1,3})(?:\s+(\d{3})\s*°?\s*[\/ ]\s*(\d{1,3}))?(?:\s+(\d{3})\s*°?\s*[\/ ]\s*(\d{1,3}))?\b/i);
+      const D = '(\\d{3}(?:\\s*-\\s*\\d{3})?)', V = '(\\d{1,3}(?:[.,]\\d)?(?:\\s*-\\s*\\d{1,3}(?:[.,]\\d)?)?)';
+      const row = line.match(new RegExp('^(GND|SFC|surface|ground|boden|\\d{3,5})\\s*(?:ft)?\\s+' + D + '\\s*°?\\s*[\\/ ]\\s*' + V + '(?:\\s+' + D + '\\s*°?\\s*[\\/ ]\\s*' + V + ')?(?:\\s+' + D + '\\s*°?\\s*[\\/ ]\\s*' + V + ')?(?:\\s|$)', 'i'));
       if (row) {
-        const cols = [[+row[2], +row[3]]]; if (row[4]) cols.push([+row[4], +row[5]]); if (row[6]) cols.push([+row[6], +row[7]]);
-        if (cols.every(c => c[0] <= 360)) { res.wind.push({ alt: /^\d/.test(row[1]) ? +row[1] : 'SFC', cols, unit:wUnit }); continue; }
+        const mid = (txt, dir) => {
+          const p = txt.split('-').map(x => parseFloat(x.replace(',', '.')));
+          if (p.length < 2) return p[0];
+          if (!dir) return (p[0] + p[1]) / 2;
+          const d = ((p[1] - p[0]) % 360 + 360) % 360; return (p[0] + d / 2) % 360;
+        };
+        const cols = [];
+        for (let k = 2; k <= 6; k += 2) if (row[k]) cols.push([Math.round(mid(row[k], true)), mid(row[k + 1], false)]);
+        if (cols.every(c => c[0] <= 360)) { res.wind.push({ alt: /^\d/.test(row[1]) ? +row[1] : 'SFC', cols, unit:wUnit, range: row.slice(2, 8).some(x => x && x.includes('-')) }); continue; }
       }
+      if (/^(GND|SFC|surface|ground|boden|\d{3,5})\b/i.test(line)) continue;
     }
     if (inWind && !head) {
       const re = /(SFC|surface|ground|GND|boden|\d{3,5})\s*(?:ft|')?\s*[:=\-]?\s*(\d{3})\s*°?\s*(?:\/|\s|@)\s*(\d{1,3})\s*(kt|kts|kn|knots|km\/h|kmh|m\/s)?/gi;
@@ -2429,7 +2496,7 @@ function parseTaskSheet(text){
       const vec = c => { const a = (c[0] + 180) * RAD; return [Math.sin(a) * c[1], Math.cos(a) * c[1]]; };
       const a = vec(w.cols[i]), b = vec(w.cols[Math.min(i + 1, w.cols.length - 1)]);
       const u = a[0] + (b[0] - a[0]) * f, v = a[1] + (b[1] - a[1]) * f;
-      return { alt:w.alt, from: Math.round((bearing(u, v) + 180) % 360), speed: Math.round(Math.hypot(u, v) * 10) / 10, unit:w.unit };
+      return { alt:w.alt, from: Math.round((bearing(u, v) + 180) % 360), speed: Math.round(Math.hypot(u, v) * 10) / 10, unit:w.unit, range:w.range };
     });
   }
   return res;
@@ -2444,7 +2511,7 @@ function normTs(r){
       nr: n(k.nr) || i + 1, type: TT_CODES.includes(s(k.type).toUpperCase()) ? s(k.type).toUpperCase() : '---',
       goals: (Array.isArray(k.goals) ? k.goals : []).filter(g => g && s(g.code)).map(g => ({ name:s(g.name).slice(0, 30), code:s(g.code).replace(/\s/g, ''), altFt:n(g.altFt) })),
       from: tme(k.from), to: tme(k.to), mma:n(k.mma), dir:n(k.dir), limit:n(k.limit), note:s(k.note).slice(0, 100) })),
-    wind: (Array.isArray(r && r.wind) ? r.wind : []).map(w => ({ alt: /^(sfc|surface|ground|gnd|boden)$/i.test(s(w.alt)) ? 'SFC' : n(w.alt), from:n(w.from), speed:n(w.speed), unit: ['kt', 'kmh', 'ms'].includes(s(w.unit)) ? s(w.unit) : 'kt' }))
+    wind: (Array.isArray(r && r.wind) ? r.wind : []).map(w => ({ range: !!(w && w.range), alt: /^(sfc|surface|ground|gnd|boden)$/i.test(s(w.alt)) ? 'SFC' : n(w.alt), from:n(w.from), speed:n(w.speed), unit: ['kt', 'kmh', 'ms'].includes(s(w.unit)) ? s(w.unit) : 'kt' }))
       .filter(w => w.alt != null && w.from != null && w.speed != null && w.from <= 360),
     pz: (Array.isArray(r && r.pz) ? r.pz : []).map((z, i) => ({ name:s(z.name) || 'PZ ' + (i + 1), type: z.type === 'poly' ? 'poly' : 'circle',
       center:s(z.center).replace(/\s/g, ''), r:n(z.r) || 500, pts:(Array.isArray(z.pts) ? z.pts : []).map(p => s(p).replace(/\s/g, '')), ceil:n(z.ceil) }))
@@ -2514,7 +2581,7 @@ function renderTsPreview(){
     const g = k.goals.map(x => { const c = parseCoord(x.code); if (!c) bad.push(x.code); return x.code + (c ? '' : ' (?)') + (x.altFt ? ' Boden ' + x.altFt + ' ft' : ''); }).join(', ');
     add('ti-row', 'T' + k.nr + ' ' + k.type + (k.from ? '  ' + k.from + '–' + k.to : k.to ? '  bis ' + k.to : '') + (k.mma ? '  MMA ' + k.mma + ' m' : '') + (k.dir != null ? '  Richtung ' + k.dir + '°' : '') + (k.limit ? '  Distanz ' + fmtDist(k.limit) : '') + (g ? '\nZiele: ' + g : '') + (k.note ? '\n' + k.note : ''));
   }
-  if (r.wind.length) add('ti-row wind', 'Wind aus dem Briefing' + (r.windInfo ? '\n' + r.windInfo : '') + '\n' + r.wind.map(w => (w.alt === 'SFC' ? 'Boden' : w.alt + ' ft') + ': aus ' + pad(Math.round(w.from), 3) + '°, ' + w.speed + ' ' + ({ kt:'kt', kmh:'km/h', ms:'m/s' })[w.unit] + (w.unit === 'kmh' ? '' : ' = ' + Math.round(windKmh(w)) + ' km/h')).join('\n'));
+  if (r.wind.length) add('ti-row wind', 'Wind aus dem Briefing' + (r.windInfo ? '\n' + r.windInfo : '') + '\n' + r.wind.map(w => (w.alt === 'SFC' ? 'Boden' : w.alt + ' ft') + ': aus ' + pad(Math.round(w.from), 3) + '°, ' + w.speed + ' ' + ({ kt:'kt', kmh:'km/h', ms:'m/s' })[w.unit] + (w.unit === 'kmh' ? '' : ' = ' + Math.round(windKmh(w)) + ' km/h') + (w.range ? ' (Mittel aus Bereich)' : '')).join('\n'));
   for (const z of r.pz) add('ti-row pz', z.name + ': ' + (z.type === 'poly' ? z.pts.length + ' Eckpunkte' : z.center + ', Radius ' + fmtR(z.r)) + (z.ceil ? ', bis ' + z.ceil + ' ft' : ''));
   add('note', 'Kurze Koordinaten (4/4) werden über den Bezugspunkt ' + Math.round(S.settings.refE) + '/' + Math.round(S.settings.refN) + ' zugeordnet.' + (bad.length ? ' Nicht lesbar: ' + bad.join(', ') + '.' : ''));
   $('#ti-apply').disabled = false;
@@ -2547,7 +2614,7 @@ function applyTaskSheet(){
   let nW = 0;
   if ($('#ti-wind').checked) for (const w of r.wind) {
     const alt = w.alt === 'SFC' ? st.groundFt : w.alt;
-    S.windManual = S.windManual.filter(x => Math.round(x.alt / 100) !== Math.round(alt / 100));
+    S.windManual = S.windManual.filter(x => Math.abs(x.alt - alt) >= 10);
     S.windManual.push({ alt, from:((w.from % 360) + 360) % 360, kmh:Math.round(windKmh(w) * 10) / 10, t:Date.now(), src:'b' }); nW++;
   }
   S.tasks.sort((a, b) => a.nr - b.nr);
@@ -3066,14 +3133,15 @@ $('#tl-new').addEventListener('click', () => openTargetForm(null, null));
 /* Wind und Abwurf */
 function renderWind(){
   const tb = $('#wbody'), p = getPlan(true), prof = windProfile(), st = S.settings;
-  const bestAlt = p && p.choice ? Math.round(p.choice.legs[0].h / 100) * 100 : null;
+  const bestH = p && p.choice ? p.choice.legs[0].h : null;
+  const bestAlt = bestH == null ? null : prof.reduce((a, r) => a == null || Math.abs(r.alt - bestH) < Math.abs(a - bestH) ? r.alt : a, null);
   tb.innerHTML = '';
   if (!prof.length) { tb.innerHTML = '<tr><td colspan="5" style="text-align:left;font-family:var(--font);font-size:.95rem;color:var(--ink-2)">Noch keine Werte. Fahre durch verschiedene Höhen oder trag einen Pibal-Wert ein.</td></tr>'; }
   const curBand = pos && pos.altFt != null ? Math.round(pos.altFt / 100) * 100 : null;
   for (const r of prof) {
     const tr = document.createElement('tr');
     if (bestAlt === r.alt) tr.classList.add('best');
-    if (r.alt === curBand) tr.classList.add('cur');
+    if (curBand != null && Math.abs(r.alt - pos.altFt) < 50) tr.classList.add('cur');
     const sp = Math.hypot(r.u, r.v), from = (bearing(r.u, r.v) + 180) % 360;
     [r.alt, sp < .3 ? '—' : fmtDeg(from), (sp * 3.6).toFixed(1).replace('.', ','), (r.alt < st.minAltFt || r.alt > st.maxAltFt) ? 'gesperrt' : (p && p.single && p.single[r.alt] != null ? fmtDist(p.single[r.alt]) : '—'),
      Math.round(r.age) + ' min' + (r.src === 'p' ? ' P' : r.src === 'br' ? ' B' : '')].forEach((v, ci) => { const td = document.createElement('td'); td.textContent = v; if (ci === 4 && r.age > 20) td.className = 'old'; tr.appendChild(td); });
@@ -3091,7 +3159,7 @@ function renderWind(){
 $('#pb-add').addEventListener('click', () => {
   const alt = numOrNull($('#pb-alt').value), from = numOrNull($('#pb-from').value), kmh = numOrNull($('#pb-kmh').value);
   if (alt == null || from == null || kmh == null) return;
-  S.windManual = S.windManual.filter(w => Math.round(w.alt / 100) !== Math.round(alt / 100));
+  S.windManual = S.windManual.filter(w => Math.abs(w.alt - alt) >= 10);
   S.windManual.push({ alt, from:((from % 360) + 360) % 360, kmh, t:Date.now() });
   ['#pb-alt', '#pb-from', '#pb-kmh'].forEach(s => $(s).value = '');
   save(); renderWind(); updateHud(); requestDraw();
@@ -3322,6 +3390,7 @@ if (document.fonts && document.fonts.ready) document.fonts.ready.then(requestDra
 if (S.map.has) idbGet('map').then(b => { if (b) setMapBlob(b); else { S.map.has = false; save(); } }).catch(() => {});
 applyMode();
 setInterval(() => { updateHud(); requestDraw(); }, 1000);
+window.__wfStarted = true;
 })();
 </script>
 </body>
