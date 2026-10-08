@@ -225,7 +225,13 @@ details.more summary{cursor:pointer;color:var(--ink-2);font-size:.9rem;margin:.4
 .mp-t{line-height:1.1;min-width:0}
 .mp-t b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:.95rem}
 .mp-t span{font-family:var(--num);font-size:1rem;color:var(--ink-2)}
-.mp-step button{padding:.3rem .15rem;font-size:.82rem}
+.mp-step{display:grid !important;grid-template-columns:repeat(2,1fr)}
+.mp-step button{padding:.35rem 0;font-size:.9rem;font-family:var(--num);font-weight:700;min-width:0}
+.mp-steplbl{font-size:.72rem;color:var(--ink-2);margin-bottom:-.15rem}
+#cp-step{grid-template-columns:repeat(3,1fr)}
+.mp-btns{flex-wrap:wrap}
+.mp-btns .btn{min-width:0;flex:1 1 auto;font-size:.8rem;padding:.4rem .3rem}
+:root.big .mp-grid{grid-template-columns:repeat(3,46px) !important;grid-template-rows:repeat(3,46px) !important}
 .mp-side small{font-size:.78rem;color:var(--ink-2);line-height:1.2}
 .mp-btns{display:flex;gap:.3rem}
 .mp-btns .btn{flex:1;padding:.35rem .4rem;font-size:.85rem}
@@ -367,9 +373,10 @@ details.more summary{cursor:pointer;color:var(--ink-2);font-size:.9rem;margin:.4
     </div>
     <div class="mp-side">
       <div class="mp-t"><b id="mp-name"></b><span id="mp-code"></span></div>
-      <div class="seg mp-step" id="mp-step"><button data-s="10">10 m</button><button data-s="100">100 m</button><button data-s="1000">1 km</button></div>
+      <div class="mp-steplbl">Schritt in m</div>
+      <div class="seg mp-step" id="mp-step"><button data-s="1">1</button><button data-s="10">10</button><button data-s="50">50</button><button data-s="500">500</button></div>
       <small id="mp-moved"></small>
-      <div class="mp-btns"><button class="btn small" id="mp-edit">Bearbeiten</button><button class="btn small primary" id="mp-done">Fertig</button></div>
+      <div class="mp-btns"><button class="btn small" id="mp-edit">Ändern</button><button class="btn small primary" id="mp-done">Fertig</button></div>
     </div>
   </div>
   <div class="movepad calpad" id="calpad" hidden>
@@ -446,7 +453,7 @@ details.more summary{cursor:pointer;color:var(--ink-2);font-size:.9rem;margin:.4
       <button data-open="reset"><b>Fahrt-Punkte löschen</b><small>Karte für die nächste Fahrt</small></button>
     </div>
     <button class="btn" data-open="settings" style="width:100%;margin-top:1rem">Einstellungen<small id="mt-set" style="display:none"></small></button>
-    <p class="note" style="text-align:center;margin-top:.9rem">Version 2026-10-09.5</p>
+    <p class="note" style="text-align:center;margin-top:.9rem">Version 2026-10-09.6</p>
   </div>
 </div>
 
@@ -2805,7 +2812,7 @@ function renderCheck(){
 }
 
 /* ---------- Ziel mit Pfeilen verschieben ---------- */
-let mpad = null, padStep = 100;
+let mpad = null, padStep = 10;
 function openPad(t){
   mpad = { id:t.id, orig:{ E:t.E, N:t.N } }; $('#movepad').hidden = false; $('.mapwrap').classList.add('padopen'); updatePad();
   padView(t, true);
