@@ -454,7 +454,7 @@ details.more summary{cursor:pointer;color:var(--ink-2);font-size:.9rem;margin:.4
       <button data-open="reset"><b>Fahrt-Punkte löschen</b><small>Karte für die nächste Fahrt</small></button>
     </div>
     <button class="btn" data-open="settings" style="width:100%;margin-top:1rem">Einstellungen<small id="mt-set" style="display:none"></small></button>
-    <p class="note" style="text-align:center;margin-top:.9rem">Version 2026-10-09.10</p>
+    <p class="note" style="text-align:center;margin-top:.9rem">Version 2026-10-09.12</p>
   </div>
 </div>
 
@@ -979,6 +979,13 @@ details.more summary{cursor:pointer;color:var(--ink-2);font-size:.9rem;margin:.4
     </div></div>
     <label class="field"><span>Schrift auf der Karte</span>
       <select id="st-font"><option value="1">Normal</option><option value="1.25">Groß</option><option value="1.5">Sehr groß</option></select></label>
+    <label class="field"><span>Symbol für meine Position</span>
+      <select id="st-possym"><option value="dot">Punkt</option><option value="balloon">Ballon</option><option value="arrow">Pfeil in Fahrtrichtung</option><option value="diamond">Raute</option><option value="triangle">Dreieck</option><option value="cross">Fadenkreuz</option></select></label>
+    <div class="row">
+      <label class="field"><span>Kreis um meine Position (m)</span><input id="st-ring" class="num" inputmode="numeric" placeholder="aus"></label>
+      <label class="field"><span>Kreis zeigen</span>
+        <select id="st-ringmode"><option value="inside">bis das Ziel innerhalb ist</option><option value="always">immer</option></select></label>
+    </div>
     <label class="checkrow"><input type="checkbox" id="st-big"> Große Tasten für Handschuhe</label>
     <button class="btn small" id="st-install" hidden>Als App installieren</button>
     <p class="note" id="st-installnote" style="margin-top:0"></p>
@@ -1043,7 +1050,7 @@ const defaults = () => ({
               simFrom:250, simKmh:14, simAltFt:1500, simAltTarget:1500, simRate:1, theme:'auto',
               groundFt:0, fallMs:5, pzLook:300,
               climbFpm:500, sinkFpm:500, minAltFt:500, maxAltFt:5000, tolM:100,
-              lowFt:50, minFinalM:500, sinkOnly:true, importLock:true, importSym:'x', gpsSrc:'device', serBaud:0, mapFont:1, fanOn:false, digE:4, digN:4, altOffsetFt:0, autoApproachM:3000, sound:false, big:false, windMaxAge:45 },
+              lowFt:50, minFinalM:500, sinkOnly:true, importLock:true, importSym:'x', posSym:'dot', posRingM:0, posRingMode:'inside', gpsSrc:'device', serBaud:0, mapFont:1, fanOn:false, digE:4, digN:4, altOffsetFt:0, autoApproachM:3000, sound:false, big:false, windMaxAge:45 },
   crew: { role:'off', status:'air' },
   targets: [], activeId: null, track: [], simPos: null,
   tasks: [], activeTaskId: null, flight: { launchFrom:'', launchTo:'' },
@@ -1987,9 +1994,42 @@ function drawBalloon(){
     ctx.strokeStyle = colors.balloon; ctx.lineWidth = 1.8; ctx.setLineDash([3, 5]); seg(x, y, x2, y2); ctx.setLineDash([]);
     dot(x2, y2, 3, colors.balloon); label("5'", x2 + 6, y2 + 4, { size:12, color:colors.balloon });
   }
-  ctx.beginPath(); ctx.arc(x, y, 10, 0, 2 * Math.PI);
-  ctx.fillStyle = colors.balloon; ctx.fill(); ctx.lineWidth = 3; ctx.strokeStyle = colors.panel; ctx.stroke();
-  dot(x, y, 3, colors.panel);
+  drawPosRing(x, y);
+  drawPosSym(x, y, m && m.course != null ? m.course : null);
+}
+let posRingVis = null;
+function drawPosRing(x, y){
+  const R = +S.settings.posRingM || 0; if (R <= 0) { posRingVis = null; return; }
+  const t = activeTarget(), d = t ? Math.hypot(t.E - pos.E, t.N - pos.N) : null;
+  const show = S.settings.posRingMode === 'always' || d == null || d > R;
+  if (t && posRingVis === true && !show && S.settings.posRingMode !== 'always') say('Ziel innerhalb ' + fmtR(R));
+  posRingVis = show; if (!show) return;
+  const rp = R * view.s; if (rp < 4) return;
+  ctx.beginPath(); ctx.arc(x, y, rp, 0, 2 * Math.PI);
+  ctx.save(); ctx.globalAlpha = .07; ctx.fillStyle = colors.balloon; ctx.fill(); ctx.restore();
+  ctx.strokeStyle = colors.balloon; ctx.lineWidth = 2; ctx.setLineDash([10, 6]); ctx.stroke(); ctx.setLineDash([]);
+  if (rp > 30) label(fmtR(R), x + rp * .707 + 4, y + rp * .707 + 12, { size:12, weight:700, color:colors.balloon });
+}
+function drawPosSym(x, y, course){
+  const f = colors.balloon, o = colors.panel, sym = S.settings.posSym || 'dot';
+  ctx.lineJoin = 'round'; ctx.lineWidth = 3; ctx.strokeStyle = o; ctx.fillStyle = f;
+  const poly = pts => { ctx.beginPath(); pts.forEach(([a, b], i) => i ? ctx.lineTo(x + a, y + b) : ctx.moveTo(x + a, y + b)); ctx.closePath(); ctx.stroke(); ctx.fill(); };
+  if (sym === 'balloon') {
+    ctx.beginPath(); ctx.arc(x, y - 6, 11, Math.PI * .8, Math.PI * .2); ctx.lineTo(x + 3.5, y + 9); ctx.lineTo(x - 3.5, y + 9); ctx.closePath(); ctx.stroke(); ctx.fill();
+    ctx.strokeStyle = o; ctx.lineWidth = 1.5; seg(x, y - 17, x, y + 8); ctx.beginPath(); ctx.ellipse(x, y - 6, 5, 11, 0, Math.PI * 1.5, Math.PI * .5); ctx.stroke();
+    ctx.fillStyle = colors.ink; ctx.fillRect(x - 3.5, y + 10, 7, 5); ctx.lineWidth = 1.5; ctx.strokeRect(x - 3.5, y + 10, 7, 5);
+  } else if (sym === 'arrow') {
+    const a = (course == null ? 0 : course) * RAD, rot = ([px, py]) => [px * Math.cos(a) - py * Math.sin(a), px * Math.sin(a) + py * Math.cos(a)];
+    poly([[0, -15], [10, 11], [0, 5], [-10, 11]].map(rot));
+  } else if (sym === 'diamond') poly([[0, -13], [11, 0], [0, 13], [-11, 0]]);
+  else if (sym === 'triangle') poly([[0, -13], [12, 9], [-12, 9]]);
+  else if (sym === 'cross') {
+    for (const [c, w] of [[o, 7], [f, 3.5]]) { ctx.strokeStyle = c; ctx.lineWidth = w; seg(x - 15, y, x + 15, y); seg(x, y - 15, x, y + 15); }
+    ctx.beginPath(); ctx.arc(x, y, 7, 0, 2 * Math.PI); ctx.strokeStyle = o; ctx.lineWidth = 5; ctx.stroke(); ctx.strokeStyle = f; ctx.lineWidth = 2.5; ctx.stroke();
+  } else {
+    ctx.beginPath(); ctx.arc(x, y, 10, 0, 2 * Math.PI); ctx.fill(); ctx.stroke();
+    dot(x, y, 3, o);
+  }
 }
 function drawScale(){
   const nice = [50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000];
@@ -4262,6 +4302,7 @@ function fillSettings(){
   $('#st-ref').value = Math.round(st.refE) + '/' + Math.round(st.refN);
   $('#st-digE').value = String(st.digE || 4); $('#st-digN').value = String(st.digN || 4); digPreview();
   $('#st-font').value = String(st.mapFont || 1);
+  $('#st-possym').value = st.posSym || 'dot'; $('#st-ring').value = st.posRingM || ''; $('#st-ringmode').value = st.posRingMode || 'inside';
   $('#st-auto').value = st.autoApproachM; $('#st-sinkonly').checked = !!st.sinkOnly;
   $('#lim-up').value = fpmToMs(st.climbFpm); $('#lim-down').value = fpmToMs(st.sinkFpm); $('#lim-min').value = st.minAltFt; $('#lim-max').value = st.maxAltFt; $('#lim-tol').value = st.tolM; $('#lim-low').value = st.lowFt; $('#lim-age').value = st.windMaxAge; $('#lim-final').value = st.minFinalM;
   $('#dr-fall').value = String(st.fallMs).replace('.', ','); $('#dr-ground').value = st.groundFt; $('#st-big').checked = !!st.big;
@@ -4281,6 +4322,9 @@ function digPreview(){
   setText('st-digprev', 'So werden Koordinaten angezeigt, z. B. ' + code44(E, N) + '. Eingaben erkennt die App unabhängig davon an der Stellenzahl.');
 }
 ['digE', 'digN'].forEach(k => $('#st-' + k).addEventListener('change', e => { S.settings[k] = +e.target.value; save(); digPreview(); requestDraw(); updateHud(); }));
+$('#st-possym').addEventListener('change', e => { S.settings.posSym = e.target.value; save(); requestDraw(); });
+$('#st-ring').addEventListener('change', e => { const v = numOrNull(e.target.value); S.settings.posRingM = v && v > 0 ? Math.round(v) : 0; e.target.value = S.settings.posRingM || ''; save(); requestDraw(); });
+$('#st-ringmode').addEventListener('change', e => { S.settings.posRingMode = e.target.value; save(); requestDraw(); });
 $('#st-font').addEventListener('change', e => { S.settings.mapFont = +e.target.value; save(); requestDraw(); });
 $('#st-sinkonly').addEventListener('change', e => { S.settings.sinkOnly = e.target.checked; save(); invalidatePlan(); updateHud(); requestDraw(); });
 $('#st-big').addEventListener('change', e => { S.settings.big = e.target.checked; save(); applyBig(); });
