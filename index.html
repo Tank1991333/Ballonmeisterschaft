@@ -70,6 +70,7 @@ button{font:inherit;color:inherit;cursor:pointer}
 .rail .gap{height:.35rem}
 .rbtn.txt{font-size:.8rem;overflow:hidden;font-weight:700;letter-spacing:-.01em}
 .zoombtn,.rail .gap{display:none}
+.mapwrap.calib .zoombtn{display:grid}
 :root.big .zoombtn{display:grid}
 :root.big .rail .gap{display:block}
 .mapwrap.anflug #tool-add,.mapwrap.anflug #tool-measure{display:none}
@@ -339,7 +340,7 @@ details.more summary{cursor:pointer;color:var(--ink-2);font-size:.9rem;margin:.4
     <div class="gpsbar" id="lgbar" hidden style="border-color:var(--ok);border-left-color:var(--ok)"><span id="lg-text"></span><button class="btn small primary" id="lg-ok" style="flex:0 0 auto">OK</button></div>
     <div class="gpsbar wait" id="updbar" hidden><span>Eine neue Version der App ist geladen.</span><button class="btn small primary" id="upd-reload" style="flex:0 0 auto">Neu laden</button></div>
     <div class="crewcard" id="crewcard" hidden></div>
-    <div class="hint" id="hint" hidden><span id="hint-text"></span><button class="ghost" id="hint-cancel" hidden>Abbrechen</button><button id="hint-done">Fertig</button></div>
+    <div class="hint" id="hint" hidden><span id="hint-text"></span><button class="ghost" id="hint-cancel" hidden>Abbrechen</button><button class="ghost" id="hint-zoom" hidden>Ganze Karte</button><button id="hint-done">Fertig</button></div>
     <div class="cursorbar" id="cursorbar" hidden><div class="cb-t"><span id="cb-code"></span><small id="cb-info"></small></div><button class="btn small" id="cb-add">Ziel hier</button></div>
   </div>
   <div class="rail">
@@ -453,7 +454,7 @@ details.more summary{cursor:pointer;color:var(--ink-2);font-size:.9rem;margin:.4
       <button data-open="reset"><b>Fahrt-Punkte löschen</b><small>Karte für die nächste Fahrt</small></button>
     </div>
     <button class="btn" data-open="settings" style="width:100%;margin-top:1rem">Einstellungen<small id="mt-set" style="display:none"></small></button>
-    <p class="note" style="text-align:center;margin-top:.9rem">Version 2026-10-09.9</p>
+    <p class="note" style="text-align:center;margin-top:.9rem">Version 2026-10-09.10</p>
   </div>
 </div>
 
@@ -2008,6 +2009,9 @@ function setTool(t){
   updateHint(); requestDraw();
 }
 function updateHint(){
+  $('.mapwrap').classList.toggle('calib', tool === 'cal' || (typeof calpadOn !== 'undefined' && calpadOn));
+  $('#hint-zoom').hidden = tool !== 'cal';
+  if (tool === 'cal' && S.map.a) setText('hint-zoom', Math.hypot(S.map.a[0], S.map.a[1]) * view.s < .8 ? 'Lupe 1:1' : 'Ganze Karte');
   const h = $('#hint');
   if (!tool) { h.hidden = true; return; }
   h.hidden = false;
@@ -4123,8 +4127,8 @@ $('#map-file').addEventListener('change', async e => {
     const blob = await new Promise(r => c.toBlob(r, 'image/jpeg', .88));
     let stored = true; try { await idbPut('map', blob); } catch (err) { stored = false; }
     setMapBlob(blob);
-    const sc = (W / view.s) / cw;
-    S.map = { has:true, w:cw, h:ch, show:true, opacity:S.map.opacity || .85, cal:false, a:[sc, 0], b:[view.cx - sc * cw / 2, view.cy + sc * ch / 2] };
+    const sc = 1 / view.s;
+    S.map = { has:true, w:cw, h:ch, show:true, opacity:S.map.opacity || .85, cal:false, a:[sc, 0], b:[view.cx - (W / 2 - 12) / view.s, view.cy + (H / 2 - 140) / view.s] };
     save(); closeSheets(); startCal();
     if (!stored) setStatus('Karte nicht gespeichert', 'warn');
   } catch (err) { $('#map-state').textContent = 'Die Karte konnte nicht gelesen werden. Versuch es mit JPG, PNG oder PDF; ein PDF braucht beim ersten Mal Internet.'; }
@@ -4224,12 +4228,19 @@ let calpadOn = false, cpStep = 50, cpOrig = null;
 function openCalpad(){
   if (!S.map.has || !S.map.a) return;
   closeSheets(); if (tool) setTool(tool); setFollow(false);
-  cpOrig = { a:S.map.a.slice(), b:S.map.b.slice() }; calpadOn = true;
+  cpOrig = { a:S.map.a.slice(), b:S.map.b.slice() }; calpadOn = true; $('.mapwrap').classList.add('calib');
   $('#calpad').hidden = false; $('.mapwrap').classList.add('padopen');
   document.querySelectorAll('#cp-step button').forEach(b => b.setAttribute('aria-pressed', +b.dataset.s === cpStep));
   requestDraw();
 }
-function closeCalpad(){ calpadOn = false; $('#calpad').hidden = true; $('.mapwrap').classList.remove('padopen'); save(); requestDraw(); }
+function closeCalpad(){ calpadOn = false; $('#calpad').hidden = true; $('.mapwrap').classList.remove('padopen', 'calib'); save(); requestDraw(); }
+$('#hint-zoom').addEventListener('click', () => {
+  const m = S.map; if (!m.a) return;
+  const sc = Math.hypot(m.a[0], m.a[1]);
+  if (sc * view.s < .8) view.s = clampS(1 / sc);
+  else { const w = cadd(cmul(m.a, [m.w / 2, -m.h / 2]), m.b); view.cx = w[0]; view.cy = w[1]; view.s = clampS(Math.min(W / (m.w * sc), H / (m.h * sc)) * .95); }
+  updateHint(); requestDraw();
+});
 function cpTransform(r){ const c = [view.cx, view.cy]; S.map.a = cmul(r, S.map.a); S.map.b = cadd(c, cmul(r, csub(S.map.b, c))); save(); requestDraw(); }
 document.querySelectorAll('#calpad [data-cpd]').forEach(b => b.addEventListener('click', () => {
   const [dx, dy] = b.dataset.cpd.split(',').map(Number); S.map.b = cadd(S.map.b, [dx * cpStep, dy * cpStep]); save(); requestDraw();
