@@ -446,7 +446,7 @@ details.more summary{cursor:pointer;color:var(--ink-2);font-size:.9rem;margin:.4
       <button data-open="reset"><b>Fahrt-Punkte löschen</b><small>Karte für die nächste Fahrt</small></button>
     </div>
     <button class="btn" data-open="settings" style="width:100%;margin-top:1rem">Einstellungen<small id="mt-set" style="display:none"></small></button>
-    <p class="note" style="text-align:center;margin-top:.9rem">Version 2026-10-09.4</p>
+    <p class="note" style="text-align:center;margin-top:.9rem">Version 2026-10-09.5</p>
   </div>
 </div>
 
@@ -1601,7 +1601,7 @@ function draw(){
   ctx.fillStyle = colors.paper; ctx.fillRect(0, 0, W, H);
   if (replay) { updateCursorBar(false); drawMapImage(); drawGrid(); drawPz(); drawReplay(); drawNotes(replay.f.notes || [], true); drawScale(); return; }
   frame = { m, prof, t, plan:getPlan(), drop:dropFor(t, profFor(t, prof), m), th:taskHelp(activeTask(), m, prof) };
-  drawMapImage(); drawGrid(); drawPz(); drawTrack(); drawNotes(S.notes); drawTargets(); drawTaskHelp(); if (S.settings.fanOn) drawFan(); drawAdvice(); drawDrop();
+  drawMapImage(); drawGrid(); drawPz(); drawTrack(); drawNotes(S.notes); drawAreas(); drawTargets(); drawTaskHelp(); if (S.settings.fanOn) drawFan(); drawAdvice(); drawDrop();
   drawMeasure(); drawDraft(); drawRemote(); drawBalloon(); drawScale();
   const cur = (!view.follow || tool === 'move' || tool === 'cal' || calpadOn) && !mpad;
   if (cur) drawCursor();
@@ -1998,6 +1998,8 @@ function taskHelp(task, m, prof){
       let best = null; for (const r of prof) if (inLim(r)) { const a = area(pos.E + r.u * 600, pos.N + r.v * 600); if (!best || a > best.a) best = { a, alt:r.alt }; }
       return { l:'Land-Run-Fläche', v: fmtArea(area(pos.E, pos.N)), s: best ? 'in 10 min auf ' + best.alt + ' ft: ' + fmtArea(best.a) : '', mark:true, draw:{ type:'lrn', A, B } };
     }
+    case 'CRT': { const c = crtState(task); if (!c) return null; return { l:'CRT-Fenster', v: c.open ? 'offen' : 'zu', s:c.txt }; }
+    case '3DT': { const D = donutState(task); if (!D) return null; return { l:'3D-Raum', v: D.inside ? 'drin' : 'draußen', s:D.txt, decl: !!(task.donut && task.donut.declared) }; }
     case 'MDT': case 'MDD': case 'XDI': case 'XDT': case 'XDD': {
       const ref = n ? marks[n - 1] : start; if (!ref) return null;
       const d = Math.hypot(pos.E - ref.E, pos.N - ref.N), max = task.type[0] === 'X';
@@ -2008,6 +2010,7 @@ function taskHelp(task, m, prof){
         let best = null; for (const r of prof) if (inLim(r)) { const dd = Math.hypot(pos.E + r.u * 600 - ref.E, pos.N + r.v * 600 - ref.N); if (!best || dd > best.d) best = { d:dd, alt:r.alt }; }
         if (best) sub += ', in 10 min auf ' + best.alt + ' ft: ' + fmtDist(best.d);
       }
+      if (task.minTime && n) { const el = (pos.t - marks[0].t) / 1000; sub += el >= task.minTime * 60 ? ', ' + task.minTime + ' min erreicht ✓' : ', Zeit ' + fmtTime(el) + ' von ' + task.minTime + ':00'; }
       return { l: max ? 'Distanz (Maximum)' : 'Distanz (Minimum)', v: fmtDist(d), s:sub, mark:true, draw:{ type:'dist', ref, limit:task.limit } };
     }
     case 'HWZ': {
@@ -2021,6 +2024,16 @@ function taskHelp(task, m, prof){
     }
   }
   return null;
+}
+function drawAreas(){
+  const k = activeTask(); if (!k || !k.areas || !k.areas.length) return;
+  for (const a of k.areas) {
+    ctx.beginPath(); a.forEach((q, i) => { const [x, y] = w2s(q[0], q[1]); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }); ctx.closePath();
+    ctx.save(); ctx.globalAlpha = .1; ctx.fillStyle = colors.ok; ctx.fill(); ctx.restore();
+    ctx.strokeStyle = colors.ok; ctx.lineWidth = 2.5; ctx.stroke();
+    const cx = a.reduce((s2, q) => s2 + q[0], 0) / a.length, cy = a.reduce((s2, q) => s2 + q[1], 0) / a.length, [lx, ly] = w2s(cx, cy);
+    label('Wertungsfläche T' + k.nr, lx, ly, { size:12, weight:700, align:'center', color:colors.ok });
+  }
 }
 function drawFan(){
   if (!pos) return;
@@ -2063,7 +2076,7 @@ function drawTaskHelp(){
     if (d.limit) { ctx.beginPath(); ctx.arc(rx, ry, d.limit * view.s, 0, 2 * Math.PI); ctx.setLineDash([8, 6]); ctx.stroke(); ctx.setLineDash([]); }
   }
   if (d && d.type === 'fan' && layer !== 'anflug' && !S.settings.fanOn) drawFan();
-  { const mr = markRule(task); if (mr) { const [rx, ry] = w2s(mr.ref.E, mr.ref.N); ctx.strokeStyle = colors.ok; ctx.lineWidth = 2; ctx.setLineDash([8, 6]);
+  { const mr = markRule(task); if (mr && !mr.time && mr.q && (mr.q.min || mr.q.max)) { const [rx, ry] = w2s(mr.ref.E, mr.ref.N); ctx.strokeStyle = colors.ok; ctx.lineWidth = 2; ctx.setLineDash([8, 6]);
       for (const rr of [mr.q.min, mr.q.max]) if (rr) { ctx.beginPath(); ctx.arc(rx, ry, rr * view.s, 0, 2 * Math.PI); ctx.stroke(); label(fmtR(rr), rx + rr * view.s * .707 + 4, ry - rr * view.s * .707, { size:11, weight:700, color:colors.ok }); }
       ctx.setLineDash([]); } }
   (task.marks || []).forEach((mk, i) => {
@@ -2100,13 +2113,52 @@ $('#th-btn').addEventListener('click', e => {
 
 /* Flugdaten aus dem Task Sheet */
 const PL = ['A', 'B', 'C', 'D'];
-function ruleText(q){ return PL[q.to] + ' zu ' + PL[q.from] + ' ' + (q.min ? fmtDist(q.min) : '0') + (q.max ? '–' + fmtDist(q.max) : ' oder mehr'); }
+function ruleText(q){ return q.maxTime ? PL[q.to] + ' spätestens ' + q.maxTime + ' min nach ' + PL[q.from] : PL[q.to] + ' zu ' + PL[q.from] + ' ' + (q.min ? fmtDist(q.min) : '0') + (q.max ? '–' + fmtDist(q.max) : ' oder mehr'); }
 function flightInfoText(I){
   if (!I) return '';
-  return [I.flightNo ? 'Flug ' + I.flightNo : '', I.date || '', I.qnh ? 'QNH ' + I.qnh : '', I.sunrise ? 'Sonne ' + I.sunrise + '–' + (I.sunset || '') : '',
+  return [I.flightNo ? 'Flug ' + I.flightNo : '', I.date || '', I.qnh ? 'QNH ' + I.qnh : '', I.launchText ? 'Startperiode ' + I.launchText : '', I.sunrise ? 'Sonne ' + I.sunrise + (I.sunset ? '–' + I.sunset : '') : '',
           I.nextBrief ? 'Nächstes Briefing ' + I.nextBrief : '', I.pzInfo ? 'PZ: ' + I.pzInfo : '', I.solo ? 'Solo ' + I.solo : '', I.launchArea ? 'Start: ' + I.launchArea : ''].filter(Boolean).join('   ');
 }
+function taskExtra(k){
+  return [k.order === 'in' ? 'in Reihenfolge' : '', k.declBefore ? 'Deklaration vor dem Start' : '',
+    k.crtWin && k.crtWin.length ? 'Fenster ' + k.crtWin.map(w => ':' + pad(w[0], 2) + '–:' + pad(w[1] % 60, 2)).join(', ') : '',
+    k.minTime ? 'mind. ' + k.minTime + ' min' : '', k.donut ? 'Donut ' + fmtR(k.donut.inner) + '–' + fmtR(k.donut.outer) + (k.donut.ceil ? ' unter ' + k.donut.ceil + ' ft' : '') : '',
+    k.fromGoals ? 'Abstand zu gesetzten Zielen ' + fmtDist(k.fromGoals) : '', k.prevDist ? 'vom letzten Messpunkt ' + fmtDist(k.prevDist) : '',
+    k.mcolors && k.mcolors.length > 1 ? 'Marker ' + k.mcolors.map(c => (PAL.find(p => p[0] === EN_COL[c]) || ['', c])[1]).join('/') : ''].filter(Boolean).join('   ');
+}
+function crtState(task){
+  if (!task || !task.crtWin || !task.crtWin.length) return null;
+  const d = new Date(), sec = d.getMinutes() * 60 + d.getSeconds();
+  for (const w of task.crtWin) if (sec >= w[0] * 60 && sec < w[1] * 60) return { open:true, left:w[1] * 60 - sec, txt:'Fenster offen bis :' + pad(w[1] % 60, 2) + ', noch ' + fmtTime(w[1] * 60 - sec) };
+  const nx = task.crtWin.map(w => w[0] * 60).map(st => st > sec ? st - sec : st + 3600 - sec).sort((a, b) => a - b)[0];
+  return { open:false, left:nx, txt:'Fenster zu, nächstes in ' + fmtTime(nx) };
+}
+function donutState(task){
+  if (!task || !task.donut || !pos) return null;
+  const c = S.targets.find(t => task.targets.includes(t.id)); if (!c) return { txt:'Zentrum noch nicht deklariert' };
+  const d = Math.hypot(pos.E - c.E, pos.N - c.N), D = task.donut, hiOk = !D.ceil || pos.altFt == null || pos.altFt < D.ceil;
+  const inR = d >= D.inner && d <= D.outer;
+  return { inside: inR && hiOk, txt: inR ? (hiOk ? 'im Wertungsraum ✓' : 'zu hoch, unter ' + D.ceil + ' ft bleiben') : d < D.inner ? 'zu weit innen, noch ' + fmtDist(D.inner - d) + ' nach außen' : 'noch ' + fmtDist(d - D.outer) + ' bis zum Ring' };
+}
 function markRule(task){
+  if (!task || !task.rules || !task.rules.length || !pos) return null;
+  const n = (task.marks || []).length, qs = task.rules.filter(x => x.to === n || (x.maxTime && x.to > n)); if (!qs.length) return null;
+  let out = null;
+  for (const q of qs) {
+    const ref = (task.marks || [])[q.from]; if (!ref) continue;
+    if (q.maxTime) {
+      const el = (pos.t - ref.t) / 1000, ok = el <= q.maxTime * 60;
+      const r = { q, ref, ok, time:true, left:q.maxTime * 60 - el, txt: ok ? PL[q.to] + ' bis ' + hhmm(ref.t + q.maxTime * 60000) + ', noch ' + fmtTime(q.maxTime * 60 - el) : PL[q.to] + ': ' + q.maxTime + ' min nach ' + PL[q.from] + ' überschritten' };
+      out = out ? { ...out, ok: out.ok && ok, txt: out.txt + ', ' + r.txt } : r;
+      continue;
+    }
+    const d = Math.hypot(pos.E - ref.E, pos.N - ref.N), ok = (!q.min || d >= q.min) && (!q.max || d <= q.max);
+    const r = { q, ref, d, ok, txt:'Abstand ' + PL[q.from] + ': ' + fmtDist(d) + ' (soll ' + (q.min ? fmtDist(q.min) : '0') + (q.max ? '–' + fmtDist(q.max) : '+') + ')' + (ok ? ' ✓' : '') };
+    out = out ? { ...r, ok: out.ok && ok, txt: r.txt + ', ' + out.txt } : r;
+  }
+  return out;
+}
+function _unused_markRule(task){
   if (!task || !task.rules || !task.rules.length || !pos) return null;
   const n = (task.marks || []).length, q = task.rules.find(x => x.to === n); if (!q) return null;
   const ref = (task.marks || [])[q.from]; if (!ref) return null;
@@ -2172,6 +2224,16 @@ $('#dc-ok').addEventListener('click', () => {
   if (pos && task.limit) { const d = Math.hypot(c.E - pos.E, c.N - pos.N); if (d < task.limit) warn.push('Das Ziel liegt nur ' + fmtDist(d) + ' vom Deklarationspunkt, verlangt sind mindestens ' + fmtDist(task.limit) + '.'); }
   if (S.flight.minIlp && S.track.length) { const d = Math.hypot(c.E - S.track[0][0], c.N - S.track[0][1]); if (d < S.flight.minIlp) warn.push('Das Ziel liegt nur ' + fmtDist(d) + ' vom Startpunkt, verlangt sind mindestens ' + fmtDist(S.flight.minIlp) + '.'); }
   if (task.minAlt) { if (altIn == null) warn.push('Die Höhe fehlt, verlangt sind mindestens ' + task.minAlt + ' ft.'); else if (altIn < task.minAlt) warn.push('Die Höhe liegt unter den verlangten ' + task.minAlt + ' ft.'); }
+  if (task.fromGoals) {
+    const set = S.targets.filter(t => S.tasks.some(k => k.targets.includes(t.id) && !/^(PDG|FON|3DT)$/.test(k.type)) || t.locked);
+    let nd = null; for (const t of set) { const dd = Math.hypot(c.E - t.E, c.N - t.N); if (nd == null || dd < nd.d) nd = { d:dd, t }; }
+    if (nd && nd.d < task.fromGoals) warn.push('Das Ziel liegt nur ' + fmtDist(nd.d) + ' von ' + nd.t.name + ', verlangt sind mindestens ' + fmtDist(task.fromGoals) + ' zu gesetzten Zielen.');
+  }
+  if (task.prevDist) {
+    const all = S.tasks.flatMap(k => (k.marks || []).map(x => x)).sort((a, b) => b.t - a.t), lm = all[0];
+    if (lm) { const dd = Math.hypot(c.E - lm.E, c.N - lm.N); if (dd < task.prevDist) warn.push('Das Ziel liegt nur ' + fmtDist(dd) + ' vom letzten Messpunkt, verlangt sind mindestens ' + fmtDist(task.prevDist) + '.'); }
+  }
+  if (task.declBefore && S.track.length > 10 && pos && Math.hypot(pos.E - S.track[0][0], pos.N - S.track[0][1]) > 300) warn.push('Diese Deklaration war vor dem Start verlangt.');
   if (task.maxDecl && (task.decl || []).length >= task.maxDecl) warn.push('Es gibt schon ' + task.decl.length + ' Deklarationen, erlaubt sind ' + task.maxDecl + '.');
   if (warn.length && !declForce) { setText('dc-warn', warn.join(' ')); $('#dc-ok').textContent = 'Trotzdem festhalten'; declForce = true; return; }
   let tid = c.tid;
@@ -2179,6 +2241,7 @@ $('#dc-ok').addEventListener('click', () => {
   const t = S.targets.find(x => x.id === tid), alt = numOrNull($('#dc-alt').value);
   task.decl = task.decl || []; task.decl.push({ tid, name:t.name, code:code44(t.E, t.N), E:t.E, N:t.N, alt: alt != null ? Math.round(alt) : null, t:Date.now() });
   if (!task.targets.includes(tid)) task.targets.push(tid);
+  if (task.donut) { t.radii = [task.donut.inner, task.donut.outer]; t.ringCol = ['orange', 'orange']; }
   S.activeId = tid; invalidatePlan(); save(); closeSheets(); requestDraw(); updateHud();
   const lg = loggerFor(task, 'goal');
   if (lg) { showLogger('Loggergoal ' + lg + ' setzen: ' + code44(t.E, t.N) + (alt != null ? ', ' + Math.round(alt) + ' ft' : '')); say('Ziel deklariert. Loggergoal ' + lg + ' setzen', true); } else say('Ziel deklariert');
@@ -2223,6 +2286,13 @@ function countdown(id, secs, marks, textFn){
   }
 }
 let lastCircle = { id:null, r:null };
+function announceTask(){
+  if (!S.settings.sound) return;
+  const k = activeTask(); if (!k) return;
+  const c = crtState(k); if (c) countdown('crt' + k.id + c.open, c.left, [60, 2], mk => (c.open ? 'Wertungsfenster schließt ' : 'Wertungsfenster öffnet ') + (mk === 60 ? 'in einer Minute' : 'jetzt'));
+  if (k.minTime && (k.marks || []).length && pos) countdown('mt' + k.id, k.minTime * 60 - (pos.t - k.marks[0].t) / 1000, [60, 2], mk => mk === 60 ? 'Mindestzeit in einer Minute erreicht' : 'Mindestzeit erreicht');
+  const mr = markRule(k); if (mr && mr.time) countdown('tr' + k.id, mr.left, [300, 60], mk => (mk === 300 ? 'Noch fünf Minuten' : 'Noch eine Minute') + ' für Punkt ' + PL[mr.q.to]);
+}
 function announce(t, d, p, dr){
   if (!S.settings.sound || !t) return;
   if (p && p.choice) {
@@ -2781,29 +2851,22 @@ function detectType(line){
   return null;
 }
 const hhmmOf = s => { const [h, m] = s.replace('.', ':').split(':'); return pad(+h, 2) + ':' + pad(+m, 2); };
+const COL_WORDS = { red:'red', rot:'red', vermelho:'red', rojo:'red', rosso:'red', white:'white', weiss:'white', 'weiß':'white', branco:'white', blanco:'white', bianco:'white',
+  blue:'blue', blau:'blue', azul:'blue', blu:'blue', green:'green', 'grün':'green', gruen:'green', verde:'green', yellow:'yellow', gelb:'yellow', amarelo:'yellow', amarillo:'yellow', giallo:'yellow',
+  orange:'orange', laranja:'orange', naranja:'orange', arancione:'orange', black:'black', schwarz:'black', preto:'black', negro:'black', nero:'black', purple:'purple', violet:'violet', lila:'purple', violett:'violet', roxo:'purple' };
+const DIST = (v, u) => Math.round(parseFloat(String(v).replace(/\.(?=\d{3}\b)/, '').replace(',', '.')) * (/km/i.test(u) ? 1000 : 1));
+const minDist = t => { const a = t.match(/min\.?\s*(\d+(?:[.,]\d+)?)\s*(km|m)\b/i) || t.match(/(\d+(?:[.,]\d+)?)\s*(km|m)\b/i); return a ? DIST(a[1], a[2]) : null; };
 function parseTaskSheet(text, launchHint){
-  const res = { launchFrom:'', launchTo:'', tasks:[], pz:[], wind:[] };
+  const res = { launchFrom:'', launchTo:'', tasks:[], pz:[], wind:[], info:{} };
   let cur = null, inPz = false, inWind = false, wUnit = 'kt', colTimes = [], wTok = [];
   const lines = text.split(/\r?\n/).map(l => l.replace(/\s+/g, ' ').trim()).filter(Boolean);
-  res.info = {};
+  const headText = [];
   for (const line of lines) {
-    { const I = res.info, g = (re) => { const m = line.match(re); return m ? m : null; };
-      let m;
-      if (!I.flightNo && (m = g(/\bFlight\s*(?:no\.?\s*)?(\d{1,3})\b/i))) I.flightNo = m[1];
-      if (!I.date && (m = g(/\b(\d{1,2})[\/.](\d{1,2})[\/.](20\d\d)\b/))) I.date = pad(+m[1], 2) + '.' + pad(+m[2], 2) + '.' + m[3];
-      if (!I.qnh && (m = g(/\bQNH\s*:?\s*(\d{3,4})\b/i))) I.qnh = +m[1];
-      if (!I.sunrise && (m = g(/Sunrise\s*\/\s*Sunset\s*(\d{1,2}:\d{2})\s*\/\s*(\d{1,2}:\d{2})/i))) { I.sunrise = hhmmOf(m[1]); I.sunset = hhmmOf(m[2]); }
-      if (!I.nextBrief && (m = g(/Next\s*briefing\s*(\d{1,2}[:.]\d{2})/i))) I.nextBrief = hhmmOf(m[1]);
-      if (!I.pzInfo && (m = g(/PZs?\s*in\s*force\s*(.+?)(?=\s+(?:Solo|QNH|Launch|Sunrise|Next|Min\.)|$)/i))) I.pzInfo = m[1].trim();
-      if (!I.solo && (m = g(/Solo\s*flight\s*(not\s*required|required)/i))) I.solo = /not/i.test(m[1]) ? 'nicht nötig' : 'verlangt';
-      if (!I.launchArea && (m = g(/Launch\s*area\s*(.+?)(?=\s+(?:PZs?\b|Launch\s*period|Solo|QNH)|$)/i))) I.launchArea = m[1].trim();
-    }
-    if (cur) cur.raw = (cur.raw || '') + ' ' + line;
     const tm = line.match(/(\d{1,2}[:.]\d{2})\s*(?:-|–|—|bis|to|until)\s*(\d{1,2}[:.]\d{2})/i);
-    const head = line.match(/\b(?:task|aufgabe|t)\s*(?:no\.?|nr\.?|#)?\s*(\d{1,2})\b/i) || line.match(/^(\d{1,2})[.)]?\s/);
+    const head = line.match(/\b(?:task|aufgabe|tarefa|prova|t)\s*(?:no\.?|nr\.?|#)?\s*(\d{1,2})\b/i) || line.match(/^(\d{1,2})[.)]?\s/);
     const type = detectType(line);
-    const coords = [...line.matchAll(/\b(\d{4,6})\s*\/\s*(\d{4,7})\b/g)].map(c => c[1] + '/' + c[2]);
-    if (/\b(winds?|winde?|pibals?|met(eo)?|wetter)\b/i.test(line)) { inWind = true; inPz = false; }
+    if (/forecast\s*period|wettervorhersage|previs[ãa]o/i.test(line) || (/\bwinds?\b/i.test(line) && /speed|kts|knots|km\/h|going\s*from|richtung/i.test(line))) { cur = null; inWind = true; inPz = false; }
+    else if (/\b(winds?|winde?|pibals?|met(eo)?|wetter)\b/i.test(line) && !cur) { inWind = true; inPz = false; }
     if (/km\/?h/i.test(line)) wUnit = 'kmh'; else if (/m\/s/i.test(line)) wUnit = 'ms'; else if (/\b(kt|kts|kn|knots|knoten)\b/i.test(line)) wUnit = 'kt';
     if (inWind) {
       const ts = [...line.matchAll(/(\d{1,2})[.:](\d{2})\s*(?:LT|UTC|Z|Uhr)/gi)];
@@ -2812,20 +2875,12 @@ function parseTaskSheet(text, launchHint){
       const D = '(\\d{3}(?:\\s*-\\s*\\d{3})?)', V = '(\\d{1,3}(?:[.,]\\d)?(?:\\s*-\\s*\\d{1,3}(?:[.,]\\d)?)?)';
       const row = line.match(new RegExp('^(GND|SFC|surface|ground|boden|\\d{3,5})\\s*(?:ft)?\\s+' + D + '\\s*°?\\s*[\\/ ]\\s*' + V + '(?:\\s+' + D + '\\s*°?\\s*[\\/ ]\\s*' + V + ')?(?:\\s+' + D + '\\s*°?\\s*[\\/ ]\\s*' + V + ')?(?:\\s|$)', 'i'));
       if (row) {
-        const mid = (txt, dir) => {
-          const p = txt.split('-').map(x => parseFloat(x.replace(',', '.')));
-          if (p.length < 2) return p[0];
-          if (!dir) return (p[0] + p[1]) / 2;
-          const d = ((p[1] - p[0]) % 360 + 360) % 360; return (p[0] + d / 2) % 360;
-        };
         const cols = [];
-        for (let k = 2; k <= 6; k += 2) if (row[k]) cols.push([Math.round(mid(row[k], true)), mid(row[k + 1], false)]);
+        for (let k = 2; k <= 6; k += 2) if (row[k]) cols.push([Math.round(windMid(row[k], true)), windMid(row[k + 1], false)]);
         if (cols.every(c => c[0] <= 360)) { res.wind.push({ alt: /^\d/.test(row[1]) ? +row[1] : 'SFC', cols, unit:wUnit, range: row.slice(2, 8).some(x => x && x.includes('-')) }); continue; }
       }
       if (/^(?:GND|SFC|\d{1,5}(?:[.,]\d)?(?:\s*-\s*\d{1,5}(?:[.,]\d)?)?|ft|°|\s)+$/i.test(line)) { wTok.push(...line.match(/GND|SFC|\d{1,5}(?:[.,]\d)?(?:\s*-\s*\d{1,5}(?:[.,]\d)?)?/gi).map(x => x.replace(/\s/g, ''))); continue; }
       if (/^(GND|SFC|surface|ground|boden|\d{3,5})\b/i.test(line)) continue;
-    }
-    if (inWind && !head) {
       const re = /(SFC|surface|ground|GND|boden|\d{3,5})\s*(?:ft|')?\s*[:=\-]?\s*(\d{3})\s*°?\s*(?:\/|\s|@)\s*(\d{1,3})\s*(kt|kts|kn|knots|km\/h|kmh|m\/s)?/gi;
       let mm, found = false;
       while ((mm = re.exec(line))) {
@@ -2835,49 +2890,108 @@ function parseTaskSheet(text, launchHint){
       }
       if (found) continue;
     }
-    { const il = line.match(/ILP[^0-9]{0,20}(\d+(?:[.,]\d+)?)\s*(km|m)\b/i); if (il && !cur) res.minIlp = Math.round(parseFloat(il[1].replace(',', '.')) * (il[2].toLowerCase() === 'km' ? 1000 : 1)); }
-    if (tm && /launch|start|take.?off|abfahrt/i.test(line) && !type) { res.launchFrom = hhmmOf(tm[1]); res.launchTo = hhmmOf(tm[2]); continue; }
-    if (/\b(PZ\s*\d*|prohibited|sperrgebiet|red\s*zone|no.?fly)/i.test(line)) inPz = true;
-    if (head && type) { cur = { nr:+head[1], type, goals:[], from:'', to:'', mma:null, dir:null, limit:null, note:'' }; res.tasks.push(cur); inPz = false; inWind = false; }
-    else if (type && cur && cur.type === '---') cur.type = type;
-    if (inPz && coords.length) {
-      const r = line.match(/\b(?:r|radius)\s*[:=]?\s*(\d+(?:[.,]\d+)?)\s*(km|m)\b/i), ceil = line.match(/(\d{3,5})\s*ft/i);
-      const name = (line.match(/\b(PZ\s*\d+)\b/i) || [])[1] || 'PZ ' + (res.pz.length + 1);
-      if (coords.length >= 3) res.pz.push({ name, type:'poly', pts:coords, ceil: ceil ? +ceil[1] : null });
-      else res.pz.push({ name, type:'circle', center:coords[0], r: r ? Math.round(parseFloat(r[1].replace(',', '.')) * (r[2].toLowerCase() === 'km' ? 1000 : 1)) : 500, ceil: ceil ? +ceil[1] : null });
-      continue;
+    if (head && type) {
+      cur = { nr:+head[1], type, goals:[], from:'', to:'', mma:null, dir:null, limit:null, lm:[], lg:[], notes:[], raw:'', mcolors:[], areas:[], order:'' };
+      res.tasks.push(cur); inPz = false; inWind = false;
+    } else if (type && cur && cur.type === '---') cur.type = type;
+    if (!cur) {
+      if (/\b(PZ\s*\d+|prohibited\s*zone|no.?fly)/i.test(line)) inPz = true;
+      const pc = [...line.matchAll(/(^|[^\d.:])(\d{4,6})\s*[\/\-–]\s*(\d{4,7})(?![\d:]|\.\d)/g)].map(c => c[2] + '/' + c[3]);
+      if (inPz && pc.length) {
+        const r = line.match(/\b(?:r|radius)\s*[:=]?\s*(\d+(?:[.,]\d+)?)\s*(km|m)\b/i), ceil = line.match(/(\d{3,5})\s*ft/i);
+        const name = (line.match(/\b(PZ\s*\d+)\b/i) || [])[1] || 'PZ ' + (res.pz.length + 1);
+        if (pc.length >= 3) res.pz.push({ name, type:'poly', pts:pc, ceil: ceil ? +ceil[1] : null });
+        else res.pz.push({ name, type:'circle', center:pc[0], r: r ? DIST(r[1], r[2]) : 500, ceil: ceil ? +ceil[1] : null });
+        continue;
+      }
+      headText.push(line); continue;
     }
-    if (!cur) continue;
-    if (tm && !cur.from) { cur.from = hhmmOf(tm[1]); cur.to = hhmmOf(tm[2]); }
-    const endAt = line.match(/(?:scoring|wertung)[^0-9]*(?:ends?|endet|until|bis)\s*(?:at|um)?\s*(\d{1,2}[:.]\d{2})/i); if (endAt && !cur.to) cur.to = hhmmOf(endAt[1]);
-    const lm = line.match(/logger\s*marker\s*:?\s*#?(\d+(?:\s*,\s*\d+)*)\s*$/i); if (lm) cur.note = (cur.note ? cur.note + ', ' : '') + 'LM ' + lm[1].replace(/\s/g, '');
-    const lg = line.match(/logger\s*goal\s*:?\s*#?(\d+)\s*$/i); if (lg) cur.note = (cur.note ? cur.note + ', ' : '') + 'LG ' + lg[1];
+    cur.raw += ' ' + line;
+    if (tm && !cur.from && /scoring|wertung|period|pontua/i.test(line)) { cur.from = hhmmOf(tm[1]); cur.to = hhmmOf(tm[2]); }
+    const endAt = line.match(/(?:scoring\s*period|wertungsperiode|wertung|per[íi]odo)[^0-9]{0,25}?(?:ends?\s*at|endet|until|bis|at[ée](?:\s*(?:as|às))?)\s*(\d{1,2}[:.]\d{2})/i);
+    if (endAt && !cur.to) cur.to = hhmmOf(endAt[1]);
+    for (const m of line.matchAll(/logger\s*-?\s*mark(?:er)?s?\s*:?\s*#?\s*(\d+(?:\s*,\s*\d+)*)/gi)) cur.lm.push(m[1].split(',').map(x => x.trim()));
+    for (const m of line.matchAll(/logger\s*-?\s*goal\s*:?\s*#?\s*(\d+)/gi)) if (!cur.lg.includes(m[1])) cur.lg.push(m[1]);
     const mma = line.match(/\bMMA\s*[:=]?\s*R?\s*(\d+)/i); if (mma) cur.mma = +mma[1];
-    const mdp = line.match(/marker\s*drop\s*:?\s*(gravity|free)/i); if (mdp) cur.drop = mdp[1].toLowerCase();
-    const sca = line.match(/scoring\s*area\s*:?\s*(.+?)(?=\s{2,}|$)/i); if (sca && !cur.area) cur.area = sca[1].trim().slice(0, 40);
-    const mal = line.match(/(?:at\s*least|mindestens|min\.?)\s*(\d{3,5})\s*ft/i); if (mal) cur.minAlt = +mal[1];
-    const mdc = line.match(/max\.?\s*(\d+)\s*(?:valid\s*)?declarations?/i); if (mdc) cur.maxDecl = +mdc[1];
-    const mcl = line.match(/marker\s*colou?r\s*[:\-]?\s*(red|white|blue|green|yellow|orange|black|purple|violet)/i); if (mcl && !cur.mcolor) cur.mcolor = mcl[1].toLowerCase();
-    const dir = line.match(/(?:direction|richtung|set\s*angle|winkel)\s*[:=]?\s*(\d{1,3})\s*°?/i); if (dir) cur.dir = +dir[1] % 360;
-    const lim = line.match(/(?:min(?:imum)?|max(?:imum)?)\.?\s*(?:distance|distanz|dist\.?)?\s*[:=]?\s*(\d+(?:[.,]\d+)?)\s*(km|m)\b/i);
-    if (lim && !/mma/i.test(line) && !inWind) cur.limit = Math.round(parseFloat(lim[1].replace(',', '.')) * (lim[2].toLowerCase() === 'km' ? 1000 : 1));
-    if (/^(notes?|remarks?|bemerkung|hinweis)\b/i.test(line)) { const tx = line.replace(/^\S+\s*:?\s*/, '').trim(); if (tx) cur.note = ((cur.note ? cur.note + ', ' : '') + tx).slice(0, 100); }
-    for (const c of coords) {
-      const alt = line.match(/(\d{3,5})\s*ft/i), nm = line.match(/\b(?:goal|ziel|target|wp)\s+([A-Z])(?:\s+(\d{2,4})\b(?!\s*\/))?/i);
-      cur.goals.push({ name: nm ? 'T' + cur.nr + ' ' + nm[1].toUpperCase() + (nm[2] ? ' (' + nm[2] + ')' : '') : '', code:c, altFt: alt ? +alt[1] : null });
+    const mdp = line.match(/marker\s*drop\s*:?\s*(gravity|free|frei|livre|libre|libero|schwerkraft|gravidade|fallen)/i);
+    if (mdp) cur.drop = /grav|schwer|fallen/i.test(mdp[1]) ? 'gravity' : 'free';
+    const mcl = line.match(/marker\s*(?:colou?r|farbe|cor|color)\s*:?\s*(.*)$/i);
+    if (mcl) for (const w of mcl[1].toLowerCase().split(/[\s,·\/;]+/)) { const c = COL_WORDS[w]; if (c && !cur.mcolors.includes(c)) cur.mcolors.push(c); }
+    const sca = /description|beschreibung/i.test(line) ? null : line.match(/(?:scoring\s*area|wertungsgebiet)\s*:?\s*(.+?)(?=\s+(?:Logger|Marker|MMA)\b|\s{2,}|$)/i); if (sca && !cur.area) cur.area = sca[1].trim().slice(0, 40);
+    const mal = line.match(/(?:at\s*least|mindestens)\s*(\d{3,5})\s*ft/i); if (mal) cur.minAlt = +mal[1];
+    const mdc = line.match(/max\.?\s*(\d+)\s*(?:valid\s*)?(?:declarations?|deklarationen|declara[çc][õo]es)/i); if (mdc) cur.maxDecl = +mdc[1];
+    const dir = line.match(/(?:set\s*direction|direction|richtung|set\s*angle|winkel|dire[çc][ãa]o)\s*[:=]?\s*(\d{1,3})\s*°?/i); if (dir) cur.dir = +dir[1] % 360;
+    if (/in\s*any\s*order|ohne\s*Reihenfolge|sem\s*ordem|any\s*order/i.test(line)) cur.order = 'any';
+    else if (/\bin\s*order\b|in\s*Reihenfolge|em\s*ordem/i.test(line) && !cur.order) cur.order = 'in';
+    if (/before\s*(?:the\s*)?(?:take\s*-?\s*off|green\s*flag|launch)|vor\s*dem\s*Start|antes\s*da\s*decolagem/i.test(line)) cur.declBefore = true;
+    if (/ausgeschlossen|excluded|exclu[ií]d/i.test(line)) cur.notes.push(line.replace(/(\d{4,6})\s*[\/\-–]\s*(\d{4,7})/g, '').replace(/^[a-h]\s*\.\s*/i, '').trim().slice(0, 50));
+    if (/^(notes?|remarks?|bemerkung|hinweis)\b/i.test(line)) { const tx = line.replace(/^\S+\s*:?\s*/, '').trim(); if (tx) cur.notes.push(tx.slice(0, 60)); }
+    const cms = [...line.matchAll(/(^|[^\d.:])(\d{4,6})\s*[\/\-–]\s*(\d{4,7})(?![\d:]|\.\d)/g)];
+    const ctx = cur.raw.slice(-260);
+    if (cms.length >= 3 && /corner|ecke|canto|square|quadrat|polygon|vértice/i.test(ctx)) { cur.areas.push(cms.map(c => c[2] + '/' + c[3])); continue; }
+    for (const c of cms) {
+      const idx = c.index + c[1].length, code = c[2] + '/' + c[3];
+      const before = line.slice(Math.max(0, idx - 18), idx), wide = line.slice(Math.max(0, idx - 40), idx), after = line.slice(idx + c[0].length - c[1].length, idx + c[0].length - c[1].length + 40);
+      const lt = before.match(/(?:^|\s)([A-H])\s*[:.]?\s*(\d{2,4})?\s*$/), ce = cur.type === '3DT' && /zentrum|centre|center/i.test(wide);
+      const sx = after.match(/^\s*[-–]\s*([A-Za-zÀ-ÿ][A-Za-zÀ-ÿ0-9 .]{1,24})/) || after.match(/^\s*\(\s*([A-Za-zÀ-ÿ]+)/);
+      const sfx = sx ? sx[1].split(/\s(?:MMA|Marker|Logger|ALT|Wertung)\b/i)[0].trim() : '';
+      const alt = after.match(/^[^\d]{0,12}?(\d{3,5})\s*ft/i) || line.match(/ALT\.?\s*(\d{3,5})\s*ft/i);
+      if (cur.goals.some(g => g.code === code)) continue;
+      const nm = (lt ? ' ' + lt[1] : '') + (lt && lt[2] ? ' (' + lt[2] + ')' : '') + (ce ? ' Zentrum' : '') + (sfx && !/^\d/.test(sfx) ? ' ' + sfx : '');
+      cur.goals.push({ name: nm ? 'T' + cur.nr + nm : '', code, altFt: alt ? +alt[1] : null });
     }
   }
-  if (!res.wind.length && wTok.length >= 3) res.wind = windFromTokens(wTok, wUnit);
-  const PI = { A:0, B:1, C:2, D:3 }, km = (v, u) => Math.round(parseFloat(v.replace(',', '.')) * (/km/i.test(u) ? 1000 : 1));
+  /* Kopfdaten */
+  const H = headText.join(' '), I = res.info, g = re => H.match(re); let m;
+  if ((m = g(/\b(?:Flight|Fahrt|Voo|Vol|Volo|Let)\s*(?:no\.?|nr\.?)?\s*(\d{1,3})(?:\s*(AM|PM)\b)?/i))) I.flightNo = m[1] + (m[2] ? ' ' + m[2].toUpperCase() : '');
+  if ((m = g(/\b(\d{1,2})[\/.](\d{1,2})[\/.](20\d\d)\b/))) I.date = pad(+m[1], 2) + '.' + pad(+m[2], 2) + '.' + m[3];
+  if ((m = g(/\bQNH\s*:?\s*(\d{3,4})\b/i))) I.qnh = +m[1];
+  if ((m = g(/(?:Sunrise\s*\/\s*Sunset|SR\b)\s*:?\s*(?:SR\s*:\s*)?(\d{1,2}:\d{2})\s*(?:\/|-|–)\s*(?:SS\s*:\s*)?(\d{1,2}:\d{2})/i))) { I.sunrise = hhmmOf(m[1]); I.sunset = hhmmOf(m[2]); }
+  else if ((m = g(/Sunrise\s*:?\s*(\d{1,2}:\d{2})/i))) I.sunrise = hhmmOf(m[1]);
+  if ((m = g(/(?:Next\s*brie\s*f?\s*i?\s*ng|N[äa]chstes\s*Briefing|Pr[óo]ximo\s*briefing)\s*:?\s*(\d{1,2}[:.]\d{2})\b/i))) I.nextBrief = hhmmOf(m[1]);
+  const STOP = '(?=\\s+(?:Solo|QNH|Launch\\s*(?:area|period)|Startplatz|Startperiode|Sunrise|SR:|PZs?\\b|Sperrgebiete|Next|N[äa]chstes|Min\\.|Minimum|Tasks?\\b|Aufgaben|Flight|Date)|$)';
+  if ((m = g(new RegExp('(?:PZs?\\s*in\\s*force|Sperrgebiete)\\s*:?\\s*(.+?)' + STOP, 'i')))) I.pzInfo = m[1].trim().slice(0, 30);
+  if ((m = g(/Solo\s*-?\s*(?:fl\s*ight|fahrt)?\s*:?\s*(not\s*required|required|n[ãa]o|nein|no|yes|sim|ja)\b/i))) I.solo = /not|n[ãa]o|nein|^no$/i.test(m[1]) ? 'nicht nötig' : 'verlangt';
+  if ((m = g(new RegExp('(?:Launch\\s*area|Startplatz|Startbereich)\\s*:?\\s*(.+?)' + STOP, 'i')))) I.launchArea = m[1].trim().slice(0, 30);
+  if ((m = g(new RegExp('(?:Launch\\s*period|Startperiode|Startfenster)\\s*:?\\s*(.+?)' + STOP, 'i')))) {
+    const lp = m[1].replace(/\s*\d+(?:[.,]\d+)?\s*km\b.*$/i, '').trim(), ts = [...lp.matchAll(/(\d{1,2}[:.]\d{2})/g)];
+    if (ts.length >= 2) { res.launchFrom = hhmmOf(ts[0][1]); res.launchTo = hhmmOf(ts[1][1]); }
+    else { I.launchText = lp.slice(0, 30); if (ts.length === 1 && /bis|until|to|at[ée]/i.test(lp)) res.launchTo = hhmmOf(ts[0][1]); }
+  }
+  if ((m = g(/ILP[^0-9]{0,60}?(\d+(?:[.,]\d+)?)\s*(km|m)\b/i))) res.minIlp = DIST(m[1], m[2]);
+  /* Auswertung je Task */
+  const PI = { A:0, B:1, C:2, D:3 };
   for (const k of res.tasks) {
-    const raw = (k.raw || '').replace(/\s+/g, ' '); k.rules = [];
-    const re = /track\s*point\s*"?([A-D])"?(.*?)(?=track\s*point\s*"?[A-D]"?|MMA|NOTES|$)/gi; let m;
-    while ((m = re.exec(raw))) {
-      const seg = m[2], to = PI[m[1].toUpperCase()];
-      const mn = seg.match(/min\.?\s*(\d+(?:[.,]\d+)?)\s*(km|m)\b/i), mx = seg.match(/max\.?\s*(\d+(?:[.,]\d+)?)\s*(km|m)\b/i), fr = seg.match(/from\s*point\s*"?([A-D])"?/i);
-      if (fr && (mn || mx)) k.rules.push({ to, from:PI[fr[1].toUpperCase()], min: mn ? km(mn[1], mn[2]) : null, max: mx ? km(mx[1], mx[2]) : null });
+    const raw = k.raw.replace(/\s+/g, ' ');
+    for (const cl of raw.split(/\s(?=[a-h]\s*\.\s+[A-Za-zÄÖÜäöü])/)) {
+      const v = minDist(cl); if (v == null) continue;
+      if (/vorherig|previous\s*(?:mark|measur|scor)/i.test(cl)) k.prevDist = v;
+      else if (/set\s*by\s*the\s*director|wettbewerbsleitung|diretor|director/i.test(cl)) k.fromGoals = v;
+      else if (/declaration\s*point|deklarationspunkt|ponto\s*de\s*declara/i.test(cl)) k.declDist = v;
     }
-    delete k.raw;
+    k.rules = [];
+    const re = /point\s*"([A-D])"(.*?)(?=point\s*"[A-D]"|MMA|NOTES|$)/gi; let mm;
+    while ((mm = re.exec(raw))) {
+      const seg = mm[2], to = PI[mm[1].toUpperCase()];
+      const mn = seg.match(/min\.?\s*(\d+(?:[.,]\d+)?)\s*(km|m)\b/i), mx = seg.match(/max\.?\s*(\d+(?:[.,]\d+)?)\s*(km|m)\b/i), fr = seg.match(/from\s*point\s*"?([A-D])"?/i);
+      if (fr && (mn || mx)) k.rules.push({ to, from:PI[fr[1].toUpperCase()], min: mn ? DIST(mn[1], mn[2]) : null, max: mx ? DIST(mx[1], mx[2]) : null });
+      const lt = seg.match(/(?:latest|within|spätestens|no\s*later\s*than)\s*(\d+)\s*min(?:utes?|uten)?\s*after\s*point\s*"?([A-D])"?/i);
+      if (lt) k.rules.push({ to, from:PI[lt[2].toUpperCase()], maxTime:+lt[1] });
+    }
+    const win = [...raw.matchAll(/(?:xx|00):(\d{2})(?::(\d{2}))?\s*(?:a|to|bis|-|–|até)\b(?:(?!xx:|00:).){0,40}?(?:xx|00):(\d{2})(?::(\d{2}))?/gi)].map(w => [+w[1], +w[3] + (w[4] === '59' ? 1 : 0)]);
+    if (win.length) k.crtWin = win;
+    if (/^(MDT|XDT)$/.test(k.type)) { const t = raw.match(/min(?:imum)?\.?\s*(?:set\s*time[^0-9]{0,25})?(\d+)\s*min\b/i); if (t) k.minTime = +t[1]; }
+    const inn = raw.match(/(?:inner\s*(?:radius|circle)|innenradius)\s*:?\s*(\d+(?:[.,]\d+)?)\s*(km|m)\b/i), out = raw.match(/(?:outer\s*(?:radius|circle)|au(?:ss|ß)enradius)\s*:?\s*(\d+(?:[.,]\d+)?)\s*(km|m)\b/i);
+    if (inn && out) {
+      const ce = raw.match(/(?:below|unterhalb|under)\s*(\d{1,2}[.,]?\d{3})\s*ft/i);
+      k.donut = { inner:DIST(inn[1], inn[2]), outer:DIST(out[1], out[2]), ceil: ce ? +ce[1].replace(/[.,]/g, '') : null, declared: /pilot[\s-]*declared|vom\s*Piloten/i.test(raw) };
+    }
+    if (k.declDist == null && !/^(ELB|LRN)$/.test(k.type)) { const l = raw.match(/min\.?\s*(\d+(?:[.,]\d+)?)\s*(km|m)\b(?!\s*(?:from\s*point))/i); if (l && /FON|PDG/.test(k.type)) k.declDist = DIST(l[1], l[2]); }
+    k.limit = k.declDist != null ? k.declDist : null;
+    const lmBest = k.lm.sort((a, b) => b.length - a.length)[0];
+    k.note = [lmBest ? 'LM ' + lmBest.join(',') : '', k.lg.length ? 'LG ' + k.lg.join(',') : '', ...k.notes].filter(Boolean).join(', ').slice(0, 120);
+    k.mcolor = k.mcolors[0] || '';
+    delete k.raw; delete k.lm; delete k.lg; delete k.notes;
   }
   if (res.wind.some(w => w.cols)) {
     const lfs = res.launchFrom || launchHint || '', lf = lfs ? lfs.split(':').map(Number) : null;
@@ -2889,7 +3003,7 @@ function parseTaskSheet(text, launchHint){
       if (w.cols.length > 1 && colTimes.length >= w.cols.length) {
         if (tgt <= colTimes[0]) { i = 0; f = 0; }
         else if (tgt >= colTimes[w.cols.length - 1]) { i = w.cols.length - 1; f = 0; }
-        else { i = colTimes.findIndex((t, k) => k < w.cols.length - 1 && tgt >= t && tgt <= colTimes[k + 1]); f = (tgt - colTimes[i]) / (colTimes[i + 1] - colTimes[i]); }
+        else { i = colTimes.findIndex((t, q) => q < w.cols.length - 1 && tgt >= t && tgt <= colTimes[q + 1]); f = (tgt - colTimes[i]) / (colTimes[i + 1] - colTimes[i]); }
         res.windInfo = 'Wind für ' + pad(Math.floor(tgt / 60) % 24, 2) + ':' + pad(tgt % 60, 2) + ' aus den Vorhersagezeiten ' + colTimes.map(t => pad(Math.floor(t / 60), 2) + ':' + pad(t % 60, 2)).join(' und ') + ' ermittelt.';
       }
       const vec = c => { const a = (c[0] + 180) * RAD; return [Math.sin(a) * c[1], Math.cos(a) * c[1]]; };
@@ -2942,9 +3056,14 @@ function normTs(r){
     tasks: (Array.isArray(r && r.tasks) ? r.tasks : []).map((k, i) => ({
       nr: n(k.nr) || i + 1, type: TT_CODES.includes(s(k.type).toUpperCase()) ? s(k.type).toUpperCase() : '---',
       goals: (Array.isArray(k.goals) ? k.goals : []).filter(g => g && s(g.code)).map(g => ({ name:s(g.name).slice(0, 30), code:s(g.code).replace(/\s/g, ''), altFt:n(g.altFt) })),
-      from: tme(k.from), to: tme(k.to), mma:n(k.mma), dir:n(k.dir), limit:n(k.limit), note:s(k.note).slice(0, 100),
+      from: tme(k.from), to: tme(k.to), mma:n(k.mma), dir:n(k.dir), limit:n(k.limit) != null ? n(k.limit) : n(k.declDist), note:s(k.note).slice(0, 100),
       minAlt:n(k.minAlt), maxDecl:n(k.maxDecl), mcolor:s(k.mcolor).toLowerCase(), drop:s(k.drop).toLowerCase(), area:s(k.area).slice(0, 40),
-      rules:(Array.isArray(k.rules) ? k.rules : []).map(q => ({ to:n(q.to), from:n(q.from), min:n(q.min), max:n(q.max) })).filter(q => q.to != null && q.from != null && (q.min || q.max)) })),
+      rules:(Array.isArray(k.rules) ? k.rules : []).map(q => ({ to:n(q.to), from:n(q.from), min:n(q.min), max:n(q.max), maxTime:n(q.maxTime) })).filter(q => q.to != null && q.from != null && (q.min || q.max || q.maxTime)),
+      order: ['in', 'any'].includes(s(k.order)) ? s(k.order) : '', declBefore: !!k.declBefore, minTime:n(k.minTime), fromGoals:n(k.fromGoals), prevDist:n(k.prevDist),
+      crtWin:(Array.isArray(k.crtWin) ? k.crtWin : []).filter(w => Array.isArray(w) && w.length === 2).map(w => [n(w[0]), n(w[1])]).filter(w => w[0] != null && w[1] != null),
+      donut: k.donut && n(k.donut.inner) && n(k.donut.outer) ? { inner:n(k.donut.inner), outer:n(k.donut.outer), ceil:n(k.donut.ceil), declared:!!k.donut.declared } : null,
+      areas:(Array.isArray(k.areas) ? k.areas : []).filter(a => Array.isArray(a) && a.length >= 3).map(a => a.map(x => s(x).replace(/\s/g, ''))),
+      mcolors:(Array.isArray(k.mcolors) ? k.mcolors : []).map(x => s(x).toLowerCase()) })),
     wind: (Array.isArray(r && r.wind) ? r.wind : []).map(w => ({ range: !!(w && w.range), alt: /^(sfc|surface|ground|gnd|boden)$/i.test(s(w.alt)) ? 'SFC' : n(w.alt), from:n(w.from), speed:n(w.speed), unit: ['kt', 'kmh', 'ms'].includes(s(w.unit)) ? s(w.unit) : 'kt' }))
       .filter(w => w.alt != null && w.from != null && w.speed != null && w.from <= 360),
     pz: (Array.isArray(r && r.pz) ? r.pz : []).map((z, i) => ({ name:s(z.name) || 'PZ ' + (i + 1), type: z.type === 'poly' ? 'poly' : 'circle',
@@ -2988,6 +3107,7 @@ function tsPrompt(text, nImg){
     'mma in Metern. dir = vorgegebene Richtung in Grad (bei Angle). limit = Mindest- oder Maximaldistanz in Metern. pz = Sperrgebiete: Kreis mit center und r in Metern oder Fläche (type "poly") mit pts; ceil = Höhengrenze in ft. ' +
     'Kopfdaten zusätzlich als "info":{"flightNo":"4","date":"24.09.2026","qnh":1019,"sunrise":"06:21","sunset":"18:26","nextBrief":"15:00","pzInfo":"all active","solo":"nicht nötig","launchArea":"individual launch"}. ' +
     'Je Task zusätzlich: drop = "gravity" oder "free" (Marker drop), area = Scoring area kurz, rules = Abstandsregeln zwischen Track-Punkten als [{"to":1,"from":0,"min":3000,"max":5000}] mit A=0, B=1, C=2. ' +
+    'Weiter je Task falls vorhanden: order = "in" (in order) oder "any", declBefore = true wenn vor dem Start zu deklarieren, declDist/fromGoals/prevDist = Mindestabstände in m (Deklarationspunkt–Ziel, zu gesetzten Zielen, vom vorherigen Messpunkt), crtWin = CRT-Fenster als Minuten der Stunde [[0,15],[30,45]], minTime = Mindestzeit in min (MDT), donut = {"inner":m,"outer":m,"ceil":ft,"declared":true/false}, areas = Eckpunkte von Wertungsflächen als Liste von Koordinatenlisten, mcolors = alle Markerfarben englisch, Zeitregeln in rules als {"to":2,"from":0,"maxTime":40}. Im Kopf info.launchText, wenn die Startperiode keine Uhrzeiten hat (z. B. "green flag + 30m"). Aufgabenblätter können deutsch, englisch, portugiesisch oder italienisch sein; Koordinaten auch als 4515 - 0758. ' +
     'Zusätzlich je Task, falls angegeben: minAlt = Mindesthöhe deklarierter Ziele in ft, maxDecl = erlaubte Anzahl Deklarationen, mcolor = Markerfarbe auf Englisch (red, white …, nicht bei any). Im Kopf: minIlp = Mindestabstand Startpunkt zu Zielen in Metern. ' +
     'goals: altFt = Geländehöhe des Ziels in ft (z. B. "4492/0389 · 955 ft" → altFt 955), name = Zielbuchstabe mit Nummer wie gedruckt (z. B. "A 212"). from leer lassen, wenn nur das Ende der Wertung angegeben ist ("Scoring period ends at 07:30" → to "07:30"). Loggermarker oder Loggergoal kurz in note ("LM 1"). ' +
     'wind = Winddaten aus dem Briefing je Höhe; GND bedeutet "SFC"; gibt es mehrere Vorhersagezeiten, die Werte für etwa 30 Minuten nach Beginn des Startfensters zwischen den Spalten interpolieren, sonst die erste Spalte;  alt in ft wie gedruckt oder "SFC" für Boden, from = Richtung aus der der Wind kommt in Grad, speed und unit genau wie gedruckt (kt, kmh oder ms). note = kurze wichtige Zusatzinfo, höchstens 100 Zeichen. Unbekanntes als "" oder null lassen, nichts erfinden.\n\n' +
@@ -3018,7 +3138,7 @@ function renderTsPreview(){
   { const t = flightInfoText(r.info || {}); if (t) add('ti-row', t); }
   for (const k of r.tasks) {
     const g = k.goals.map(x => { const c = parseCoord(x.code); if (!c) bad.push(x.code); return x.code + (c ? '' : ' (?)') + (x.altFt ? ' Boden ' + x.altFt + ' ft' : ''); }).join(', ');
-    add('ti-row', 'T' + k.nr + ' ' + k.type + (k.drop ? (k.drop === 'gravity' ? '  fallen lassen' : '  frei werfen') : '') + (k.rules && k.rules.length ? '  Abstände: ' + k.rules.map(ruleText).join(', ') : '') + (k.mcolor ? '  Marker ' + (PAL.find(p => p[0] === EN_COL[k.mcolor]) || ['', k.mcolor])[1] : '') + (k.minAlt ? '  min. ' + k.minAlt + ' ft' : '') + (k.maxDecl ? '  max. ' + k.maxDecl + ' Dekl.' : '') + (k.from ? '  ' + k.from + '–' + k.to : k.to ? '  bis ' + k.to : '') + (k.mma ? '  MMA ' + k.mma + ' m' : '') + (k.dir != null ? '  Richtung ' + k.dir + '°' : '') + (k.limit ? '  Distanz ' + fmtDist(k.limit) : '') + (g ? '\nZiele: ' + g : '') + (k.note ? '\n' + k.note : ''));
+    add('ti-row', 'T' + k.nr + ' ' + k.type + (k.order === 'in' ? '  in Reihenfolge' : '') + (k.declBefore ? '  Deklaration vor dem Start' : '') + (k.crtWin && k.crtWin.length ? '  Fenster ' + k.crtWin.map(w => ':' + pad(w[0], 2) + '–:' + pad(w[1] % 60, 2)).join(', ') : '') + (k.minTime ? '  mind. ' + k.minTime + ' min' : '') + (k.donut ? '  Donut ' + fmtR(k.donut.inner) + '–' + fmtR(k.donut.outer) + (k.donut.ceil ? ' unter ' + k.donut.ceil + ' ft' : '') + (k.donut.declared ? ', Zentrum deklariert' : '') : '') + (k.fromGoals ? '  Abstand zu gesetzten Zielen ' + fmtDist(k.fromGoals) : '') + (k.prevDist ? '  vom letzten Messpunkt ' + fmtDist(k.prevDist) : '') + (k.areas && k.areas.length ? '  Wertungsfläche' : '') + (k.drop ? (k.drop === 'gravity' ? '  fallen lassen' : '  frei werfen') : '') + (k.rules && k.rules.length ? '  Abstände: ' + k.rules.map(ruleText).join(', ') : '') + (k.mcolors && k.mcolors.length ? '  Marker ' + k.mcolors.map(c => (PAL.find(p => p[0] === EN_COL[c]) || ['', c])[1]).join('/') : k.mcolor ? '  Marker ' + (PAL.find(p => p[0] === EN_COL[k.mcolor]) || ['', k.mcolor])[1] : '') + (k.minAlt ? '  min. ' + k.minAlt + ' ft' : '') + (k.maxDecl ? '  max. ' + k.maxDecl + ' Dekl.' : '') + (k.from ? '  ' + k.from + '–' + k.to : k.to ? '  bis ' + k.to : '') + (k.mma ? '  MMA ' + k.mma + ' m' : '') + (k.dir != null ? '  Richtung ' + k.dir + '°' : '') + (k.limit ? '  Distanz ' + fmtDist(k.limit) : '') + (g ? '\nZiele: ' + g : '') + (k.note ? '\n' + k.note : ''));
   }
   if (r.wind.length) add('ti-row wind', 'Wind aus dem Briefing' + (r.windInfo ? '\n' + r.windInfo : '') + '\n' + r.wind.map(w => (w.alt === 'SFC' ? 'Boden' : w.alt + ' ft') + ': aus ' + pad(Math.round(w.from), 3) + '°, ' + w.speed + ' ' + ({ kt:'kt', kmh:'km/h', ms:'m/s' })[w.unit] + (w.unit === 'kmh' ? '' : ' = ' + Math.round(windKmh(w)) + ' km/h') + (w.range ? ' (Mittel aus Bereich)' : '')).join('\n'));
   for (const z of r.pz) add('ti-row pz', z.name + ': ' + (z.type === 'poly' ? z.pts.length + ' Eckpunkte' : z.center + ', Radius ' + fmtR(z.r)) + (z.ceil ? ', bis ' + z.ceil + ' ft' : ''));
@@ -3056,8 +3176,10 @@ function applyTaskSheet(){
       S.targets.push(t); ids.push(t.id); nT++;
     });
     const old = S.tasks.find(x => x.nr === k.nr);
-    const task = { id: old ? old.id : uid(), nr:k.nr, type:k.type, targets:ids, from:k.from, to:k.to, mma:k.mma, note:k.note, dir:k.dir, limit:k.limit, minAlt:k.minAlt, maxDecl:k.maxDecl, mcolor:k.mcolor, drop:k.drop, area:k.area, rules:k.rules, marks: old ? old.marks || [] : [], decl: old ? old.decl || [] : [] };
+    const task = { id: old ? old.id : uid(), nr:k.nr, type:k.type, targets:ids, from:k.from, to:k.to, mma:k.mma, note:k.note, dir:k.dir, limit:k.limit, minAlt:k.minAlt, maxDecl:k.maxDecl, mcolor:k.mcolor, drop:k.drop, area:k.area, rules:k.rules, order:k.order, declBefore:k.declBefore, crtWin:k.crtWin, minTime:k.minTime, donut:k.donut, fromGoals:k.fromGoals, prevDist:k.prevDist, mcolors:k.mcolors,
+      areas:(k.areas || []).map(a => a.map(parseCoord).filter(Boolean).map(c => [c.E, c.N])).filter(a => a.length >= 3), marks: old ? old.marks || [] : [], decl: old ? old.decl || [] : [] };
     if (old) Object.assign(old, task); else S.tasks.push(task);
+    if (k.donut && !k.donut.declared) for (const id of ids) { const tg = S.targets.find(x => x.id === id); if (tg) { tg.radii = [k.donut.inner, k.donut.outer]; tg.ringCol = ['orange', 'orange']; } }
   }
   let nP = 0;
   for (const z of r.pz) {
@@ -3300,7 +3422,7 @@ function updateHud(){
     setText('alt-tgt', Math.round(S.settings.simAltFt) !== S.settings.simAltTarget ? '→ ' + S.settings.simAltTarget : '');
   } else if (manualAlt()) { setText('alt-sim', Math.round(S.settings.manualAltFt || 0) + ' ft'); setText('alt-tgt', 'manuell'); }
   const tt = $('#ttask'); tt.hidden = !task; if (task) setText('ttask', 'T' + task.nr + ' ' + task.type);
-  updateClock(); updateAlert(m); updateCrewCard();
+  updateClock(); updateAlert(m); updateCrewCard(); announceTask();
   const th = updateTaskHelp(m, prof, !t);
   const needle = $('#needle'), an = $('#altneedle'), boxAlt = $('#adv-alt'), boxDrop = $('#adv-drop'), circ = $('#tcircle');
   const quiet = () => { setText('passv', '—'); setText('passl', 'Vorbeiflug'); setText('dial-rel', '—'); needle.style.opacity = .25; an.style.opacity = 0; boxAlt.hidden = true; boxDrop.hidden = true; circ.classList.remove('in'); };
@@ -3413,7 +3535,7 @@ function renderTasks(){
     nm.textContent = 'T' + k.nr + ' ' + k.type + ' ' + (TASK_TYPES.find(x => x[0] === k.type) || ['', ''])[1];
     const sub = document.createElement('div'); sub.className = 'sub';
     const names = k.targets.map(id => (S.targets.find(t => t.id === id) || {}).name).filter(Boolean);
-    sub.textContent = [names.join(', ') || 'kein Ziel', (k.from || k.to) ? (k.from || '…') + '–' + (k.to || '…') : '', k.mma ? 'MMA ' + k.mma + ' m' : '', k.drop ? (k.drop === 'gravity' ? 'fallen lassen' : 'frei werfen') : '', k.area && !/entire/i.test(k.area) ? 'Gebiet: ' + k.area : '', k.rules && k.rules.length ? k.rules.map(ruleText).join(', ') : '', k.note].filter(Boolean).join('   ');
+    sub.textContent = [names.join(', ') || 'kein Ziel', (k.from || k.to) ? (k.from || '…') + '–' + (k.to || '…') : '', k.mma ? 'MMA ' + k.mma + ' m' : '', k.drop ? (k.drop === 'gravity' ? 'fallen lassen' : 'frei werfen') : '', k.area && !/entire/i.test(k.area) ? 'Gebiet: ' + k.area : '', k.rules && k.rules.length ? k.rules.map(ruleText).join(', ') : '', taskExtra(k), k.note].filter(Boolean).join('   ');
     meta.append(nm, sub);
     const go = document.createElement('button'); go.className = 'btn small'; go.textContent = k.id === S.activeTaskId ? 'Beenden' : 'Fliegen';
     go.addEventListener('click', () => {
