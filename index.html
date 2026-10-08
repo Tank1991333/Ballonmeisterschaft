@@ -446,7 +446,7 @@ details.more summary{cursor:pointer;color:var(--ink-2);font-size:.9rem;margin:.4
       <button data-open="reset"><b>Fahrt-Punkte löschen</b><small>Karte für die nächste Fahrt</small></button>
     </div>
     <button class="btn" data-open="settings" style="width:100%;margin-top:1rem">Einstellungen<small id="mt-set" style="display:none"></small></button>
-    <p class="note" style="text-align:center;margin-top:.9rem">Version 2026-10-09.2</p>
+    <p class="note" style="text-align:center;margin-top:.9rem">Version 2026-10-09.3</p>
   </div>
 </div>
 
@@ -575,6 +575,15 @@ details.more summary{cursor:pointer;color:var(--ink-2);font-size:.9rem;margin:.4
       </table>
     </div>
     <p class="note" id="wind-note">Das Profil entsteht automatisch aus deiner Fahrt. „Vorbei“ zeigt, wie nah du am aktiven Ziel vorbeikommst, wenn du auf diese Höhe gehst und dort bleibst. Grün ist die erste Höhe des besten Plans.</p>
+
+    <h3>Modellwind</h3>
+    <label class="checkrow"><input type="checkbox" id="md-on"> Wind aus dem Wettermodell verwenden</label>
+    <div class="row">
+      <label class="field"><span>Modell</span>
+        <select id="md-model"><option value="auto">Automatisch</option><option value="icon_d2">ICON-D2 (2 km, Mitteleuropa)</option><option value="icon_eu">ICON-EU (7 km, Europa)</option></select></label>
+      <div class="field" style="flex:0 0 8rem"><span>&nbsp;</span><button class="btn" id="md-load" style="width:100%">Laden</button></div>
+    </div>
+    <p class="note" id="md-state" style="margin-top:0"></p>
 
     <h3>Pibal-Wert eintragen</h3>
     <div class="row">
@@ -987,6 +996,7 @@ const defaults = () => ({
   targets: [], activeId: null, track: [], simPos: null,
   tasks: [], activeTaskId: null, flight: { launchFrom:'', launchTo:'' },
   pz: [], windMeasured: {}, windManual: [], flights: [], notes: [], trackOn: false,
+  model: { on:false, choice:'auto', data:null },
   map: { has:false, w:0, h:0, a:null, b:null, cal:false, show:true, opacity:.85 }
 });
 function uid(){ return Math.random().toString(36).slice(2, 9); }
@@ -1004,7 +1014,7 @@ function load(){
     const raw = localStorage.getItem(KEY);
     if (raw) {
       const d = JSON.parse(raw), base = defaults();
-      return { ...base, ...d, settings:{ ...base.settings, ...(d.settings || {}) }, crew:{ ...base.crew, ...(d.crew || {}) },
+      return { ...base, ...d, model:{ ...base.model, ...(d.model || {}) }, settings:{ ...base.settings, ...(d.settings || {}) }, crew:{ ...base.crew, ...(d.crew || {}) },
                flight:{ ...base.flight, ...(d.flight || {}) }, map:{ ...base.map, ...(d.map || {}) } };
     }
   } catch (e) {}
@@ -1156,6 +1166,10 @@ function windProfile(){
     if (age > (m.src === 'b' ? Math.max(S.settings.windMaxAge, 180) : S.settings.windMaxAge)) continue;
     if (Object.values(rows).some(r => r.src === 'm' && Math.abs(r.alt - alt) < 60 && r.age < age)) continue;
     if (!rows[k] || rows[k].age > age) rows[k] = { alt, u:Math.sin(to) * sp, v:Math.cos(to) * sp, age, src: m.src === 'b' ? 'br' : 'p' };
+  }
+  if (S.model.on) for (const r of modelRows()) {
+    if (Object.values(rows).some(x => Math.abs(x.alt - r.alt) < 150)) continue;
+    rows['mod' + r.alt] = r;
   }
   return Object.values(rows).sort((a, b) => b.alt - a.alt);
 }
@@ -1341,6 +1355,91 @@ function dropFor(t, prof, m){
   out.release = [pos.E + m.u * out.time, pos.N + m.v * out.time];
   return out;
 }
+
+/* ---------- Modellwind (DWD ICON über Open-Meteo) ---------- */
+const MD_LV = [1000, 975, 950, 925, 900, 850, 800, 700, 600], MD_AGL = [10, 80, 120, 180];
+let mdBusy = false, mdMsg = '';
+function modelPlace(){
+  let E, N;
+  if (pos) { E = pos.E; N = pos.N; }
+  else if (S.targets.length) { E = S.targets.reduce((a, t) => a + t.E, 0) / S.targets.length; N = S.targets.reduce((a, t) => a + t.N, 0) / S.targets.length; }
+  else { E = S.settings.refE; N = S.settings.refN; }
+  return { E, N, ...utm2ll(E, N, S.settings.zone) };
+}
+function modelRows(){
+  const d = S.model.data; if (!d || !d.t || !d.t.length) return [];
+  const now = Date.now() / 1000;
+  if (now < d.t[0] - 3600 || now > d.t[d.t.length - 1]) return [];
+  let i = 0; while (i < d.t.length - 2 && d.t[i + 1] <= now) i++;
+  const f = Math.max(0, Math.min(1, (now - d.t[i]) / (d.t[i + 1] - d.t[i])));
+  const uv = (s, dir, k) => { const a = s[k], b = dir[k]; if (a == null || b == null) return null; const to = (b + 180) * RAD, v = a / 3.6; return [Math.sin(to) * v, Math.cos(to) * v]; };
+  const mix = (s, dir) => { const p = uv(s, dir, i), q = uv(s, dir, i + 1); if (!p || !q) return p || q; return [p[0] + (q[0] - p[0]) * f, p[1] + (q[1] - p[1]) * f]; };
+  const out = [];
+  for (const l of d.lv) {
+    const w = mix(l.s, l.d), z0 = l.z[i], z1 = l.z[i + 1]; if (!w || z0 == null) continue;
+    const z = z1 == null ? z0 : z0 + (z1 - z0) * f;
+    if (z < d.elev + 20) continue;
+    out.push({ alt:Math.round(z / FT / 10) * 10, u:w[0], v:w[1], age:0, src:'mod' });
+  }
+  for (const a of d.agl) {
+    const w = mix(a.s, a.d); if (!w) continue;
+    out.push({ alt:Math.round((d.elev + a.h) / FT / 10) * 10, u:w[0], v:w[1], age:0, src:'mod' });
+  }
+  return out;
+}
+async function fetchModel(choice){
+  const pl = modelPlace();
+  const vars = MD_LV.flatMap(p => ['wind_speed_' + p + 'hPa', 'wind_direction_' + p + 'hPa', 'geopotential_height_' + p + 'hPa'])
+    .concat(MD_AGL.flatMap(h => ['wind_speed_' + h + 'm', 'wind_direction_' + h + 'm']));
+  const url = 'https://api.open-meteo.com/v1/forecast?latitude=' + pl.lat.toFixed(4) + '&longitude=' + pl.lon.toFixed(4)
+    + '&hourly=' + vars.join(',') + '&models=' + choice + '&wind_speed_unit=kmh&timeformat=unixtime&forecast_days=2';
+  const r = await fetch(url); if (!r.ok) throw new Error('http');
+  const j = await r.json(), h = j.hourly || {};
+  const col = k => (h[k] || []).map(v => v == null ? null : +v);
+  const data = { model:choice, fetched:Date.now(), lat:pl.lat, lon:pl.lon, E:pl.E, N:pl.N, elev: j.elevation || 0, t: h.time || [],
+    lv: MD_LV.map(p => ({ p, s:col('wind_speed_' + p + 'hPa'), d:col('wind_direction_' + p + 'hPa'), z:col('geopotential_height_' + p + 'hPa') })),
+    agl: MD_AGL.map(x => ({ h:x, s:col('wind_speed_' + x + 'm'), d:col('wind_direction_' + x + 'm') })) };
+  const ok = data.lv.some(l => l.s.some(v => v != null)) || data.agl.some(a => a.s.some(v => v != null));
+  return ok ? data : null;
+}
+async function loadModel(manual){
+  if (mdBusy) return; mdBusy = true; mdMsg = 'Lade Modellwind …'; renderModel();
+  try {
+    let d = null;
+    if (S.model.choice === 'icon_eu') d = await fetchModel('icon_eu');
+    else { d = await fetchModel('icon_d2'); if (!d && S.model.choice === 'auto') d = await fetchModel('icon_eu'); }
+    if (!d) mdMsg = S.model.choice === 'icon_d2' ? 'ICON-D2 deckt diesen Ort nicht ab. Wähle ICON-EU oder Automatisch.' : 'Für diesen Ort gibt es keine Modelldaten.';
+    else { S.model.data = d; mdMsg = ''; save(); invalidatePlan(); requestDraw(); updateHud(); if (manual) say('Modellwind geladen'); }
+  } catch (e) {
+    mdMsg = window.claude ? 'Modellwind geht nur auf deiner eigenen Seite, nicht in der Claude-Version.' : 'Laden nicht möglich. Ist das Gerät online?';
+  }
+  mdBusy = false; renderModel(); if ($('#sheet-wind').classList.contains('open')) renderWind();
+}
+function renderModel(){
+  $('#md-on').checked = !!S.model.on; $('#md-model').value = S.model.choice || 'auto';
+  const d = S.model.data;
+  let txt = mdMsg;
+  if (!txt && d) {
+    const name = d.model === 'icon_d2' ? 'ICON-D2' : 'ICON-EU', last = d.t.length ? d.t[d.t.length - 1] * 1000 : 0;
+    const dist = pos ? Math.hypot(pos.E - d.E, pos.N - d.N) : 0;
+    txt = name + ' geladen um ' + hhmm(d.fetched) + ', gültig bis ' + new Date(last).toLocaleString('de-AT', { weekday:'short', hour:'2-digit', minute:'2-digit' }) + '.'
+      + (dist > 30000 ? ' Achtung: für einen Ort ' + fmtDist(dist) + ' entfernt geladen.' : '')
+      + (S.model.on ? ' Modellwerte stehen in der Tabelle als „Modell“; gemessene und Briefing-Werte haben Vorrang.' : '');
+  }
+  if (!txt) txt = 'Lädt die Windvorhersage des Deutschen Wetterdienstes für deinen Ort. Braucht Internet, danach bleibt sie offline gespeichert.';
+  setText('md-state', txt + ' Daten: Open-Meteo.com, DWD ICON.');
+}
+$('#md-on').addEventListener('change', e => {
+  S.model.on = e.target.checked; save(); invalidatePlan(); renderModel(); renderWind(); updateHud(); requestDraw();
+  if (S.model.on && (!S.model.data || Date.now() - S.model.data.fetched > 3600000)) loadModel(false);
+});
+$('#md-model').addEventListener('change', e => { S.model.choice = e.target.value; save(); loadModel(true); });
+$('#md-load').addEventListener('click', () => loadModel(true));
+setInterval(() => {
+  if (!S.model.on || mdBusy || !navigator.onLine || window.claude) return;
+  const d = S.model.data, far = d && pos && Math.hypot(pos.E - d.E, pos.N - d.N) > 30000;
+  if (!d || Date.now() - d.fetched > 3600000 || far) loadModel(false);
+}, 60000);
 
 /* ---------- Sperrgebiete ---------- */
 function pzInsideXY(z, E, N){
@@ -3326,7 +3425,7 @@ function confirmBtn(btn, label, fn){
 const openers = {
   tasks: () => { setText('ts-msg', ''); renderTasks(); openSheet('#sheet-tasks'); },
   list: () => { tlMsg(''); $('#tl-undo').hidden = true; $('#imp-lock').checked = !!S.settings.importLock; $('#imp-sym').value = S.settings.importSym || 'x'; renderList(); openSheet('#sheet-list'); },
-  wind: () => { setText('wd-msg', ''); renderWind(); openSheet('#sheet-wind'); },
+  wind: () => { setText('wd-msg', ''); renderModel(); renderWind(); openSheet('#sheet-wind'); },
   pz: () => { renderPz(); openSheet('#sheet-pz'); },
   map: () => { renderMapSheet(); openSheet('#sheet-map'); },
   log: () => { logMsg(''); renderLog(); openSheet('#sheet-log'); },
@@ -3488,7 +3587,7 @@ function renderWind(){
     if (curBand != null && Math.abs(r.alt - pos.altFt) < 50) tr.classList.add('cur');
     const sp = Math.hypot(r.u, r.v), from = (bearing(r.u, r.v) + 180) % 360;
     [r.alt, sp < .3 ? '—' : fmtDeg(from), (sp * 3.6).toFixed(1).replace('.', ','), (r.alt < st.minAltFt || r.alt > st.maxAltFt) ? 'gesperrt' : (p && p.single && p.single[r.alt] != null ? fmtDist(p.single[r.alt]) : '—'),
-     Math.round(r.age) + ' min' + (r.src === 'p' ? ' P' : r.src === 'br' ? ' B' : '')].forEach((v, ci) => { const td = document.createElement('td'); td.textContent = v; if (ci === 4 && r.age > 20) td.className = 'old'; tr.appendChild(td); });
+     (r.src === 'mod' ? 'Modell' : Math.round(r.age) + ' min' + (r.src === 'p' ? ' P' : r.src === 'br' ? ' B' : ''))].forEach((v, ci) => { const td = document.createElement('td'); td.textContent = v; if (ci === 4 && r.age > 20) td.className = 'old'; tr.appendChild(td); });
     tb.appendChild(tr);
   }
 }
