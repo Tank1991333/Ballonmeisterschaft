@@ -430,7 +430,7 @@ details.more summary{cursor:pointer;color:var(--ink-2);font-size:.9rem;margin:.4
       <button data-open="log"><b>Logbuch</b><small id="mt-log"></small></button>
       <button data-open="settings"><b>Einstellungen</b><small id="mt-set"></small></button>
     </div>
-    <p class="note" style="text-align:center;margin-top:.9rem">Version 2026-10-08.10</p>
+    <p class="note" style="text-align:center;margin-top:.9rem">Version 2026-10-08.11</p>
   </div>
 </div>
 
@@ -3483,25 +3483,38 @@ $('#map-del').addEventListener('click', e => confirmBtn(e.target, 'Karte entfern
 }));
 function startCal(){ setFollow(false); cal = { pts:[], pending:null }; tool = null; setTool('cal'); }
 function calKm(v){ v = ((Math.round(v) % 100) + 100) % 100; return pad(v, 2); }
+/* Bezug für die zweistelligen Liniennummern: GPS-Position, sonst Mitte der Ziele, sonst Bezugspunkt */
+function calAnchor(){
+  if (S.settings.mode === 'gps' && pos) return { E:pos.E, N:pos.N, what:'deiner Position' };
+  if (S.targets.length) { const n = S.targets.length; return { E:S.targets.reduce((a, t) => a + t.E, 0) / n, N:S.targets.reduce((a, t) => a + t.N, 0) / n, what:'deinen Zielen' }; }
+  if (pos) return { E:pos.E, N:pos.N, what:'deiner Position' };
+  return { E:S.settings.refE, N:S.settings.refN, what:'dem Bezugspunkt' };
+}
+function kmToWorld(e, n){ const an = calAnchor(); return { E:resolve(e * 1000, an.E, 1e5), N:resolve(n * 1000, an.N, 1e5) }; }
 function openCalSheet(){
   const first = !cal.pts.length;
   setText('cal-title', 'Passpunkt ' + (cal.pts.length + 1) + ' von 2');
-  const base = first ? [S.settings.refE, S.settings.refN] : cal.pts[0].w;
+  const an = calAnchor(), base = first ? [an.E, an.N] : cal.pts[0].w;
   $('#cal-e').value = calKm(Math.floor(base[0] / 1000)); $('#cal-n').value = calKm(Math.floor(base[1] / 1000));
-  $('#cal-coord').value = ''; $('#cal-prev').className = 'note'; calPreview();
+  $('#cal-coord').value = ''; $('#cal-ok').textContent = 'Punkt übernehmen'; cal.force = false; calPreview();
   openSheet('#sheet-cal');
+}
+function calKmIn(){
+  const e = parseInt($('#cal-e').value, 10), n = parseInt($('#cal-n').value, 10);
+  return !isFinite(e) || !isFinite(n) || e < 0 || e > 99 || n < 0 || n > 99 ? null : [e, n];
 }
 function calCoord(){
   const raw = $('#cal-coord').value.trim();
   if (raw) return parseCoord(raw);
-  const e = parseInt($('#cal-e').value, 10), n = parseInt($('#cal-n').value, 10);
-  if (!isFinite(e) || !isFinite(n) || e < 0 || e > 99 || n < 0 || n > 99) return null;
-  return { E:resolve(e * 1000, S.settings.refE, 1e5), N:resolve(n * 1000, S.settings.refN, 1e5) };
+  const k = calKmIn(); return k ? kmToWorld(k[0], k[1]) : null;
 }
 function calPreview(){
   const c = calCoord(), el = $('#cal-prev');
+  $('#cal-ok').textContent = 'Punkt übernehmen'; if (cal) cal.force = false;
   if (!c) { el.className = 'note err'; el.textContent = 'Bitte zwei Zahlen von 00 bis 99 eingeben.'; return; }
-  el.className = 'note'; el.textContent = 'Kreuzung ' + code44(c.E, c.N) + ' (Rechtswert ' + Math.round(c.E) + ', Hochwert ' + Math.round(c.N) + ')';
+  const an = calAnchor(), d = Math.hypot(c.E - an.E, c.N - an.N);
+  el.className = d > 40000 ? 'note err' : 'note';
+  el.textContent = 'Kreuzung ' + code44(c.E, c.N) + ', ' + fmtDist(d) + ' von ' + an.what + ' entfernt.' + (d > 40000 ? ' Das ist weit weg, prüfe die Zahlen und unter Einstellungen die UTM-Zone.' : '');
 }
 function cancelCalPoint(){ if (cal) cal.pending = null; }
 document.querySelectorAll('#sheet-cal [data-ck]').forEach(b => b.addEventListener('click', () => {
@@ -3509,28 +3522,47 @@ document.querySelectorAll('#sheet-cal [data-ck]').forEach(b => b.addEventListene
 }));
 ['#cal-e', '#cal-n', '#cal-coord'].forEach(id => $(id).addEventListener('input', calPreview));
 $('#cal-cancel').addEventListener('click', () => { cancelCalPoint(); closeSheets(); });
+function fitCal(p1, p2){
+  const z1 = [p1.img[0], -p1.img[1]], z2 = [p2.img[0], -p2.img[1]];
+  const a = cdiv(csub(p2.w, p1.w), csub(z2, z1));
+  return { a, b:csub(p1.w, cmul(a, z1)), rot:Math.atan2(a[1], a[0]) / RAD, mpp:Math.hypot(a[0], a[1]) };
+}
 $('#cal-ok').addEventListener('click', () => {
   const c = calCoord();
   if (!c || !cal || !cal.pending) { calPreview(); return; }
-  const p = { img:cal.pending, w:[c.E, c.N] };
+  const p = { img:cal.pending, w:[c.E, c.N], km: $('#cal-coord').value.trim() ? null : calKmIn() };
   if (cal.pts.length === 0) {
     cal.pending = null; cal.pts.push(p);
     S.map.b = csub(p.w, cmul(S.map.a, [p.img[0], -p.img[1]]));
     view.cx = p.w[0]; view.cy = p.w[1];
     closeSheets(); updateHint(); requestDraw(); return;
   }
-  const p1 = cal.pts[0], z1 = [p1.img[0], -p1.img[1]], z2 = [p.img[0], -p.img[1]];
-  if (Math.hypot(z2[0] - z1[0], z2[1] - z1[1]) < 40 || Math.hypot(p.w[0] - p1.w[0], p.w[1] - p1.w[1]) < 900) {
-    const el = $('#cal-prev'); el.className = 'note err'; el.textContent = 'Die beiden Punkte liegen zu nah beieinander oder haben dieselben Liniennummern. Wähle eine Kreuzung mehrere Linien weiter.';
+  const p1 = cal.pts[0], el = $('#cal-prev');
+  if (Math.hypot(p.img[0] - p1.img[0], p.img[1] - p1.img[1]) < 40 || Math.hypot(p.w[0] - p1.w[0], p.w[1] - p1.w[1]) < 900) {
+    el.className = 'note err'; el.textContent = 'Die beiden Punkte liegen zu nah beieinander oder haben dieselben Liniennummern. Wähle eine Kreuzung mehrere Linien weiter.';
     return;
   }
+  let f = fitCal(p1, p), note = '';
+  /* Wettbewerbskarten sind genordet: starke Drehung heißt meist vertauschte Zahlen */
+  if (Math.abs(f.rot) > 8 && p1.km && p.km) {
+    const sw = q => { const w = kmToWorld(q.km[1], q.km[0]); return { img:q.img, w:[w.E, w.N] }; };
+    const g = fitCal(sw(p1), sw(p));
+    if (Math.abs(g.rot) < Math.abs(f.rot) && Math.abs(g.rot) <= 8) { f = g; note = 'Die Zahlen oben/unten und links/rechts waren vertauscht, die App hat sie getauscht.'; }
+  }
+  if (!cal.force && (Math.abs(f.rot) > 8 || f.mpp < .3 || f.mpp > 60)) {
+    el.className = 'note err';
+    el.textContent = (Math.abs(f.rot) > 8 ? 'Damit wäre die Karte um ' + Math.round(f.rot) + '° gedreht. ' : 'Der Maßstab wirkt unpassend (' + f.mpp.toFixed(1).replace('.', ',') + ' m pro Bildpunkt). ')
+      + 'Prüfe, ob das Kreuz bei beiden Punkten genau auf der Kreuzung lag und die Zahlen stimmen.';
+    $('#cal-ok').textContent = 'Trotzdem übernehmen'; cal.force = true; return;
+  }
   cal.pending = null;
-  S.map.a = cdiv(csub(p.w, p1.w), csub(z2, z1));
-  S.map.b = csub(p1.w, cmul(S.map.a, z1));
+  S.map.a = f.a; S.map.b = f.b;
   S.map.cal = true; save(); closeSheets(); tool = 'cal'; setTool('cal');
   view.cx = (p.w[0] + p1.w[0]) / 2; view.cy = (p.w[1] + p1.w[1]) / 2;
   openCalpad(); requestDraw();
+  if (note) { setText('hint-text', note); $('#hint').hidden = false; $('#hint-cancel').hidden = true; $('#hint-done').textContent = 'OK'; tool = 'calnote'; }
 });
+$('#cal-coord').addEventListener('input', () => { if (cal) cal.force = false; });
 
 /* Feinjustieren */
 let calpadOn = false, cpStep = 50, cpOrig = null;
@@ -3616,6 +3648,7 @@ $('#tool-add').addEventListener('click', () => setTool('add'));
 $('#tool-measure').addEventListener('click', () => setTool('measure'));
 $('#hint-cancel').addEventListener('click', () => setTool(tool));
 $('#hint-done').addEventListener('click', () => {
+  if (tool === 'calnote') { tool = null; $('#hint').hidden = true; return; }
   if (tool === 'move') { const t = S.targets.find(x => x.id === moveId); if (t) { t.E = view.cx; t.N = view.cy; save(); invalidatePlan(); } setTool('move'); updateHud(); return; }
   if (tool === 'pz') { setTool('pz'); finishPzDraft(); return; }
   if (tool === 'cal') { cal.pending = worldToImg(view.cx, view.cy); openCalSheet(); return; }
