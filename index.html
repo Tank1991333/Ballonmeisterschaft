@@ -409,7 +409,7 @@ input[type=range]{padding:0;border:0;background:none;accent-color:var(--ink)}
       <button data-open="log"><b>Logbuch</b><small id="mt-log"></small></button>
       <button data-open="settings"><b>Einstellungen</b><small id="mt-set"></small></button>
     </div>
-    <p class="note" style="text-align:center;margin-top:.9rem">Version 2026-10-08.6</p>
+    <p class="note" style="text-align:center;margin-top:.9rem">Version 2026-10-08.7</p>
   </div>
 </div>
 
@@ -1530,6 +1530,11 @@ function symSvg(sym){
   return '<svg viewBox="0 0 26 26" aria-hidden="true">' + (m[sym] || m.x) + '</svg>';
 }
 function taskTags(t){ return S.tasks.filter(k => k.targets.includes(t.id)).sort((a, b) => a.nr - b.nr).map(k => 'T' + k.nr + ', ' + k.type).join('   '); }
+function targetTitle(t){
+  const tg = taskTags(t); if (!tg) return t.name;
+  const g = t.name.match(/^T\d+\s+([A-Z])\b/);
+  return tg + (g ? ' ' + g[1] : '');
+}
 function drawTargets(){
   const act = frame.t, task = activeTask(), mmaOf = {};
   for (const k of S.tasks) if (k.mma) for (const id of k.targets) mmaOf[id] = Math.max(mmaOf[id] || 0, k.mma);
@@ -1539,9 +1544,10 @@ function drawTargets(){
       if (layer === 'anflug') continue;
       ctx.globalAlpha = task && !task.targets.includes(t.id) ? .4 : .85;
       drawSymbol(t.sym, x, y, 7, false);
-      label(t.name, x + 12, y + 4, { size:12, weight:600 });
-      if (t.locked) { ctx.font = '600 12px ' + FONT_NUM; drawLock(x + 14 + ctx.measureText(t.name).width, y + 4); }
-      { const tg = taskTags(t); if (tg) label(tg, x + 12, y + 17, { size:11, weight:700, color:colors.ink }); }
+      { const top = targetTitle(t);
+        label(top, x + 12, y - 1, { size:12, weight:700 });
+        if (t.locked) { ctx.font = '700 12px ' + FONT_NUM; drawLock(x + 14 + ctx.measureText(top).width, y - 1); }
+        label(code44(t.E, t.N), x + 12, y + 12, { size:11, color:colors['ink-2'] }); }
       ctx.globalAlpha = 1; continue;
     }
     for (const r of t.radii || []) {
@@ -1570,10 +1576,10 @@ function drawTargets(){
     if (mpad && mpad.id === t.id) { ctx.beginPath(); ctx.arc(x, y, 22, 0, 2 * Math.PI); ctx.strokeStyle = colors.ink; ctx.lineWidth = 2; ctx.setLineDash([4, 4]); ctx.stroke(); ctx.setLineDash([]); }
     const k = on ? 12 : 9;
     drawSymbol(t.sym, x, y, k, on);
-    label(t.name, x + k + 7, y - 2, { size:on ? 15 : 13, weight:700 });
-    if (t.locked) { ctx.font = '700 ' + (on ? 15 : 13) + 'px ' + FONT_NUM; drawLock(x + k + 10 + ctx.measureText(t.name).width, y - 2); }
-    { const tg = taskTags(t); if (tg) { label(tg, x + k + 7, y + 13, { size:12, weight:700, color:colors.ink }); ctx.font = '700 12px ' + FONT_NUM; label(code44(t.E, t.N), x + k + 7 + ctx.measureText(tg).width + 8, y + 13, { size:12, color:colors['ink-2'] }); }
-      else label(code44(t.E, t.N), x + k + 7, y + 13, { size:12, color:colors['ink-2'] }); }
+    { const top = targetTitle(t);
+      label(top, x + k + 7, y - 2, { size:on ? 15 : 13, weight:700 });
+      if (t.locked) { ctx.font = '700 ' + (on ? 15 : 13) + 'px ' + FONT_NUM; drawLock(x + k + 10 + ctx.measureText(top).width, y - 2); }
+      label(code44(t.E, t.N), x + k + 7, y + 13, { size:12, color:colors['ink-2'] }); }
     ctx.globalAlpha = 1;
   }
 }
