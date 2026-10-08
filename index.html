@@ -3,6 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#14293B">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Wettfahrt">
 <title>Wettfahrt – Ballon-Navigation</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -275,6 +279,14 @@ input[type=range]{padding:0;border:0;background:none;accent-color:var(--ink)}
   function show(m){ var el = document.getElementById('fatal'); if (!el || window.__wfStarted) return; el.hidden = false; document.getElementById('fatal-msg').textContent = m; }
   window.addEventListener('error', function(e){ show((e.message || 'Unbekannter Fehler') + (e.lineno ? ' (Zeile ' + e.lineno + ')' : '')); });
   setTimeout(function(){ if (!window.__wfStarted) show('Das Programm wurde nicht vollständig geladen. Prüfe, ob die Datei index.html vollständig hochgeladen wurde.'); }, 6000);
+  var inClaude = !!window.claude || /claude\.ai|claudeusercontent|anthropic/.test(location.hostname);
+  window.__wfOwnSite = !inClaude && (location.protocol === 'https:' || location.hostname === 'localhost');
+  if (window.__wfOwnSite) {
+    var l = document.createElement('link'); l.rel = 'manifest'; l.href = 'manifest.json'; document.head.appendChild(l);
+    var a = document.createElement('link'); a.rel = 'apple-touch-icon'; a.href = 'icon-192.png'; document.head.appendChild(a);
+    if ('serviceWorker' in navigator) window.addEventListener('load', function(){ navigator.serviceWorker.register('sw.js').catch(function(){}); });
+  }
+  window.addEventListener('beforeinstallprompt', function(e){ e.preventDefault(); window.__wfInstall = e; var b = document.getElementById('st-install'); if (b) b.hidden = false; });
   document.getElementById('fatal-reset').onclick = function(){
     if (!confirm('Alle gespeicherten Ziele, Tasks und Einstellungen auf diesem Gerät löschen?')) return;
     try { localStorage.removeItem('wettfahrt-v1'); } catch (e) {}
@@ -391,7 +403,7 @@ input[type=range]{padding:0;border:0;background:none;accent-color:var(--ink)}
       <button data-open="log"><b>Logbuch</b><small id="mt-log"></small></button>
       <button data-open="settings"><b>Einstellungen</b><small id="mt-set"></small></button>
     </div>
-    <p class="note" style="text-align:center;margin-top:.9rem">Version 2026-10-08.3</p>
+    <p class="note" style="text-align:center;margin-top:.9rem">Version 2026-10-08.5</p>
   </div>
 </div>
 
@@ -640,6 +652,18 @@ input[type=range]{padding:0;border:0;background:none;accent-color:var(--ink)}
   </div>
 </div>
 
+<!-- Willkommen -->
+<div class="back" id="sheet-welcome">
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="wl-title">
+    <h2 id="wl-title">Willkommen bei Wettfahrt</h2>
+    <p class="note" style="margin-top:0">Womit möchtest du starten? Du kannst das jederzeit in den Einstellungen ändern.</p>
+    <div class="btns" style="flex-direction:column">
+      <button class="btn primary" id="wl-gps">GPS: echte Fahrt</button>
+      <button class="btn" id="wl-sim">Simulation: üben mit Beispielzielen</button>
+    </div>
+  </div>
+</div>
+
 <!-- Startcheck -->
 <div class="back" id="sheet-check">
   <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="ck-title">
@@ -834,6 +858,8 @@ input[type=range]{padding:0;border:0;background:none;accent-color:var(--ink)}
       <button class="btn small" id="st-cleartrack">Track und Markierungen löschen</button>
       <button class="btn small danger" id="st-clearall">Alle Ziele löschen</button>
     </div>
+    <button class="btn small" id="st-install" hidden>Als App installieren</button>
+    <p class="note" id="st-installnote"></p>
     <div class="btns">
       <button class="btn small" id="bk-save">Sicherung speichern</button>
       <label class="btn small filebtn">Sicherung laden<input type="file" id="bk-load" accept=".json,application/json" hidden></label>
@@ -891,7 +917,7 @@ function load(){
                flight:{ ...base.flight, ...(d.flight || {}) }, map:{ ...base.map, ...(d.map || {}) } };
     }
   } catch (e) {}
-  const d = defaults(); seedDemo(d); return d;
+  const d = defaults(); seedDemo(d); d.firstRun = true; return d;
 }
 const S = load();
 let saveTimer = null;
@@ -1134,7 +1160,7 @@ function computePlan(tArg){
     const legs = [{ h, until:Infinity }];
     let bh = null;
     if (groundMode) {
-      for (const tD of tDs(sinkOnly ? 20 : 60)) { const r = simulate(legs, sinkOnly ? 20 : 30, false, tD); if (r && (!bh || r.pass < bh.pass)) bh = { pass:r.pass, tPass:r.tPass, tD }; }
+      for (const tD of tDs((sinkOnly ? 20 : 60) * planQ)) { const r = simulate(legs, (sinkOnly ? 20 : 30) * planQ, false, tD); if (r && (!bh || r.pass < bh.pass)) bh = { pass:r.pass, tPass:r.tPass, tD }; }
     } else { const r = simulate(legs, 15, false); if (r) bh = { pass:r.pass, tPass:r.tPass }; }
     if (!bh) continue;
     single[Math.round(h)] = bh.pass; singles.push({ legs, ...bh });
@@ -1154,8 +1180,8 @@ function computePlan(tArg){
         if (h2 === h1) continue;
         const legs = [{ h:h1, until:t1 }, { h:h2, until:Infinity }];
         if (groundMode) {
-          for (const tD of tDs(120)) { if (tD <= t1) continue; const r = simulate(legs, 30, false, tD); if (r && (!two || r.pass < two.pass)) two = { legs, pass:r.pass, tPass:r.tPass, tD }; }
-        } else { const r = simulate(legs, 30); if (r && (!two || r.pass < two.pass)) two = { legs, pass:r.pass, tPass:r.tPass }; }
+          for (const tD of tDs(120 * planQ)) { if (tD <= t1) continue; const r = simulate(legs, 30 * planQ, false, tD); if (r && (!two || r.pass < two.pass)) two = { legs, pass:r.pass, tPass:r.tPass, tD }; }
+        } else { const r = simulate(legs, 30 * planQ); if (r && (!two || r.pass < two.pass)) two = { legs, pass:r.pass, tPass:r.tPass }; }
       }
     }
     if (two && (!choice || two.pass < choice.pass - 30)) choice = two;
@@ -1184,9 +1210,15 @@ function computePlan(tArg){
            reachable: choice.pass <= tol };
 }
 let plan = null, planAt = 0, lastSwitch = null;
+let planCost = 0, planEvery = 3000, planQ = 1;
 function getPlan(force){
-  if (force || !plan || Date.now() - planAt > 3000 || (plan.tid && plan.tid !== S.activeId) || (!plan.tid && activeTarget() && pos)) {
-    plan = computePlan(); planAt = Date.now();
+  if (!force && plan && document.hidden) return plan;
+  if (force || !plan || Date.now() - planAt > planEvery || (plan.tid && plan.tid !== S.activeId) || (!plan.tid && activeTarget() && pos)) {
+    const t0 = performance.now(); plan = computePlan(); const dt = performance.now() - t0;
+    planCost = planCost ? planCost * .7 + dt * .3 : dt;
+    planEvery = Math.min(12000, Math.max(3000, planCost * 40));
+    planQ = planCost > 150 ? 2 : planCost < 60 ? 1 : planQ;
+    planAt = Date.now();
   }
   return plan;
 }
@@ -1308,7 +1340,8 @@ function startGps(){
       setFollow(true);
     }
     const raw = c.altitude != null ? c.altitude / FT : null;
-    pushFix({ E:u.E, N:u.N, altFt: raw != null ? raw + S.settings.altOffsetFt : null, rawAltFt:raw, t: p.timestamp || Date.now() });
+    if (raw == null && S.settings.manualAltFt == null) S.settings.manualAltFt = S.settings.groundFt;
+    pushFix({ E:u.E, N:u.N, altFt: raw != null ? raw + S.settings.altOffsetFt : S.settings.manualAltFt, rawAltFt:raw, t: p.timestamp || Date.now() });
     lastAcc = c.accuracy; lastLon = c.longitude;
     setStatus('GPS ±' + Math.round(c.accuracy) + ' m', c.accuracy <= 30 ? 'ok' : 'warn');
   }, err => {
@@ -1329,7 +1362,7 @@ function stopGps(){ if (watchId != null) navigator.geolocation.clearWatch(watchI
 function applyMode(){
   stopSim(); stopGps();
   if (S.settings.mode === 'gps') startGps(); else startSim();
-  $('#altctl').hidden = S.settings.mode !== 'sim';
+  updateAltCtl();
   $('#st-gps').setAttribute('aria-pressed', S.settings.mode === 'gps');
   $('#st-sim').setAttribute('aria-pressed', S.settings.mode === 'sim');
 }
@@ -1348,6 +1381,7 @@ function resize(){
   cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
   if (!view.ready && W > 0) { view.s = clampS(Math.min(W, H) / 9000); view.ready = true; }
   requestDraw();
+  if (window.__wfStarted) updateHud();
 }
 new ResizeObserver(resize).observe(cv);
 function readColors(){
@@ -2348,6 +2382,7 @@ const ckTicks = {};
 function checks(){
   const st = S.settings, out = [], gps = st.mode === 'gps';
   out.push({ ok: gps, txt:'Positionsquelle GPS', sub: gps ? 'GPS ist aktiv' : 'Die Simulation ist aktiv', act: gps ? null : ['Umstellen', () => { st.mode = 'gps'; save(); applyMode(); }] });
+  out.push({ ok: gps && !!pos && pos.rawAltFt != null, txt:'GPS-Höhe', sub: !gps || !pos ? 'wird mit GPS geprüft' : pos.rawAltFt != null ? 'Gerät liefert eine Höhe' : 'Gerät liefert keine Höhe: manuelle Höhe links unten verwenden und mit dem Höhenmesser abgleichen', act: pos && pos.rawAltFt == null ? ['Höhe eingeben', openAltSheet] : null });
   out.push({ ok: lastAcc != null && lastAcc <= 30, txt:'GPS-Genauigkeit', sub: lastAcc != null ? '±' + Math.round(lastAcc) + ' m' + (lastAcc > 30 ? ', besser unter 30 m' : '') : 'noch kein GPS-Signal' });
   out.push({ ok: lastLon != null && zoneOf(lastLon) === st.zone, txt:'UTM-Zone ' + st.zone, sub: lastLon != null ? (zoneOf(lastLon) === st.zone ? 'passt zur Position' : 'Position liegt in Zone ' + zoneOf(lastLon)) : 'wird mit GPS geprüft' });
   const refD = pos ? Math.hypot(pos.E - st.refE, pos.N - st.refN) : null;
@@ -2363,6 +2398,7 @@ function checks(){
   out.push({ ok: nw > 0, txt:'Winddaten', sub: nw ? nw + ' Höhen bekannt' : 'Pibal eintragen oder beim Steigen messen', act:['Wind', openers.wind] });
   out.push({ ok: !!st.sound, txt:'Ansagen', sub: st.sound ? 'eingeschaltet' : 'ausgeschaltet', act: st.sound ? null : ['Einschalten', () => { st.sound = true; save(); setSoundUi(); say('Ansagen an'); }] });
   if (S.map.has) out.push({ ok: !!S.map.cal, txt:'Wettbewerbskarte kalibriert', sub: S.map.cal ? 'passt zum Gitter' : 'noch nicht kalibriert', act: S.map.cal ? null : ['Karte', openers.map] });
+  if (window.__wfOwnSite) out.push({ ok: !!(navigator.serviceWorker && navigator.serviceWorker.controller), txt:'Offline bereit', sub: navigator.serviceWorker && navigator.serviceWorker.controller ? 'App startet auch ohne Netz' : 'einmal mit Internet öffnen und neu laden; sw.js muss hochgeladen sein' });
   out.push({ ok: !!wakeLock, txt:'Bildschirm bleibt an', sub: wakeLock ? 'aktiv' : 'einmal antippen, falls der Browser es erlaubt', act: wakeLock ? null : ['Aktivieren', () => keepAwake().then(renderCheck)] });
   return out;
 }
@@ -2858,9 +2894,10 @@ $('#btn-view').addEventListener('click', () => setLayer(layer === 'anflug' ? 'pl
 /* Höhe abgleichen */
 function openAltSheet(){
   closeSheets();
-  const st = S.settings, gps = st.mode === 'gps' && pos && pos.rawAltFt != null, off = Math.round(st.altOffsetFt);
+  const st = S.settings, man = manualAlt(), gps = st.mode === 'gps' && pos && (pos.rawAltFt != null || man), off = Math.round(st.altOffsetFt);
   $('#al-state').textContent = st.mode !== 'gps' ? 'Der Abgleich gilt für GPS. In der Simulation gibt es keine Abweichung.'
-    : !gps ? 'Noch keine GPS-Höhe vorhanden.'
+    : !pos ? 'Noch keine GPS-Position vorhanden.'
+    : man ? 'Dein Gerät liefert keine GPS-Höhe. Trag hier deine Höhe vom Höhenmesser ein und passe sie in der Fahrt links unten mit ▲/▼ an. Aktuell: ' + Math.round(st.manualAltFt || 0) + ' ft.'
     : 'GPS-Höhe ' + Math.round(pos.rawAltFt) + ' ft, Korrektur ' + (off >= 0 ? '+' : '') + off + ' ft, angezeigt ' + Math.round(pos.altFt) + ' ft.';
   $('#al-val').value = ''; $('#al-ok').disabled = !gps;
   openSheet('#sheet-alt'); if (gps) setTimeout(() => $('#al-val').focus(), 60);
@@ -2869,7 +2906,9 @@ $('#stat-alt').addEventListener('click', openAltSheet);
 $('#stat-alt').addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openAltSheet(); } });
 $('#st-alt').addEventListener('click', openAltSheet);
 $('#al-ok').addEventListener('click', () => {
-  const v = numOrNull($('#al-val').value); if (v == null || !pos || pos.rawAltFt == null) return;
+  const v = numOrNull($('#al-val').value); if (v == null || !pos) return;
+  if (manualAlt()) { S.settings.manualAltFt = Math.max(0, Math.round(v)); S.settings.altCheckedAt = Date.now(); pos.altFt = S.settings.manualAltFt; save(); invalidatePlan(); closeSheets(); updateHud(); requestDraw(); return; }
+  if (pos.rawAltFt == null) return;
   S.settings.altOffsetFt = v - pos.rawAltFt; S.settings.altCheckedAt = Date.now(); pos.altFt = v; save(); invalidatePlan(); closeSheets(); updateHud(); requestDraw();
 });
 $('#al-reset').addEventListener('click', () => {
@@ -2895,10 +2934,11 @@ function updateHud(){
   const t = activeTarget(), m = motion(), prof = windProfile(), task = activeTask();
   setText('altv', pos && pos.altFt != null ? Math.round(pos.altFt) + ' ft' : '—');
   setText('spdv', m ? (m.gs * 3.6).toFixed(1).replace('.', ',') : '—');
+  updateAltCtl();
   if (S.settings.mode === 'sim') {
     setText('alt-sim', Math.round(S.settings.simAltFt) + ' ft');
     setText('alt-tgt', Math.round(S.settings.simAltFt) !== S.settings.simAltTarget ? '→ ' + S.settings.simAltTarget : '');
-  }
+  } else if (manualAlt()) { setText('alt-sim', Math.round(S.settings.manualAltFt || 0) + ' ft'); setText('alt-tgt', 'manuell'); }
   const tt = $('#ttask'); tt.hidden = !task; if (task) setText('ttask', 'T' + task.nr + ' ' + task.type);
   updateClock(); updateAlert(m); updateCrewCard();
   const th = updateTaskHelp(m, prof, !t);
@@ -3089,7 +3129,7 @@ const openers = {
   log: () => { logMsg(''); renderLog(); openSheet('#sheet-log'); },
   crew: () => { renderCrew(); openSheet('#sheet-crew'); },
   check: () => { renderCheck(); openSheet('#sheet-check'); },
-  settings: () => { bkMsg(''); $('#bk-apply').hidden = true; fillSettings(); openSheet('#sheet-settings'); }
+  settings: () => { bkMsg(''); $('#bk-apply').hidden = true; fillSettings(); installNote(); openSheet('#sheet-settings'); }
 };
 $('#btn-menu').addEventListener('click', () => {
   { const o = checks().filter(c => !c.ok).length; setText('mt-check', o ? o + (o === 1 ? ' Punkt offen' : ' Punkte offen') : 'alles bereit'); }
@@ -3446,7 +3486,14 @@ $('#hint-done').addEventListener('click', () => {
 $('#btn-follow').addEventListener('click', () => setFollow(true));
 $('#zoom-in').addEventListener('click', () => zoomBy(1.6));
 $('#zoom-out').addEventListener('click', () => zoomBy(1 / 1.6));
+const manualAlt = () => S.settings.mode === 'gps' && !!pos && pos.rawAltFt == null;
+function updateAltCtl(){ $('#altctl').hidden = !(S.settings.mode === 'sim' || manualAlt()); }
 function stepAlt(d){
+  if (manualAlt()) {
+    const c = S.settings.manualAltFt || 0, st = (c < 300 || (c === 300 && d < 0)) ? Math.sign(d) * 50 : d;
+    S.settings.manualAltFt = Math.max(0, Math.round((c + st) / 50) * 50); if (pos) pos.altFt = S.settings.manualAltFt;
+    save(); invalidatePlan(); updateHud(); requestDraw(); return;
+  }
   const cur = S.settings.simAltTarget, step = (cur < 300 || (cur === 300 && d < 0)) ? Math.sign(d) * 50 : d;
   S.settings.simAltTarget = Math.max(0, Math.min(10000, Math.round((cur + step) / 50) * 50)); save(); updateHud();
 }
@@ -3464,7 +3511,26 @@ document.addEventListener('visibilitychange', () => { if (document.visibilitySta
 applyTheme(); setSoundUi(); applyBig();
 if (document.fonts && document.fonts.ready) document.fonts.ready.then(requestDraw);
 if (S.map.has) idbGet('map').then(b => { if (b) setMapBlob(b); else { S.map.has = false; save(); } }).catch(() => {});
+$('#wl-gps').addEventListener('click', () => {
+  S.firstRun = false; S.targets = []; S.pz = []; S.activeId = null; S.track = []; S.simPos = null; S.settings.mode = 'gps';
+  save(); closeSheets(); applyMode(); requestDraw(); updateHud();
+});
+$('#wl-sim').addEventListener('click', () => { S.firstRun = false; save(); closeSheets(); });
+$('#st-install').addEventListener('click', async () => {
+  const e = window.__wfInstall; if (!e) return;
+  e.prompt(); try { await e.userChoice; } catch (err) {}
+  window.__wfInstall = null; $('#st-install').hidden = true;
+});
+function installNote(){
+  const standalone = matchMedia('(display-mode: standalone)').matches || navigator.standalone;
+  $('#st-install').hidden = !window.__wfInstall;
+  setText('st-installnote', !window.__wfOwnSite ? '' : standalone ? 'Die App ist installiert und startet auch ohne Netz.'
+    : isIOS() ? 'Als App installieren: in Safari auf Teilen tippen, dann „Zum Home-Bildschirm“.'
+    : window.__wfInstall ? '' : 'Als App installieren: im Browser-Menü „Zum Startbildschirm hinzufügen“ oder „App installieren“.');
+}
+
 applyMode();
+if (S.firstRun) openSheet('#sheet-welcome');
 setInterval(() => { updateHud(); requestDraw(); }, 1000);
 window.__wfStarted = true;
 })();
