@@ -453,7 +453,7 @@ details.more summary{cursor:pointer;color:var(--ink-2);font-size:.9rem;margin:.4
       <button data-open="reset"><b>Fahrt-Punkte löschen</b><small>Karte für die nächste Fahrt</small></button>
     </div>
     <button class="btn" data-open="settings" style="width:100%;margin-top:1rem">Einstellungen<small id="mt-set" style="display:none"></small></button>
-    <p class="note" style="text-align:center;margin-top:.9rem">Version 2026-10-09.7</p>
+    <p class="note" style="text-align:center;margin-top:.9rem">Version 2026-10-09.8</p>
   </div>
 </div>
 
@@ -660,7 +660,7 @@ details.more summary{cursor:pointer;color:var(--ink-2);font-size:.9rem;margin:.4
   <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="mp-title">
     <h2 id="mp-title">Wettbewerbskarte</h2>
     <p class="note" id="map-state" style="margin-top:0"></p>
-    <label class="btn primary filebtn" style="margin-top:.8rem">Kartenbild laden<input type="file" id="map-file" accept="image/*" hidden></label>
+    <label class="btn primary filebtn" style="margin-top:.8rem">Karte laden (Bild oder PDF)<input type="file" id="map-file" accept="image/*,.pdf,application/pdf" hidden></label>
     <div id="map-ctrl">
       <label class="field" style="margin-top:1rem"><span>Deckkraft</span><input type="range" id="map-op" min="0.2" max="1" step="0.05"></label>
       <div class="btns">
@@ -770,6 +770,34 @@ details.more summary{cursor:pointer;color:var(--ink-2);font-size:.9rem;margin:.4
   </div>
 </div>
 
+<!-- Teilen -->
+<div class="back" id="sheet-share">
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sh-title">
+    <h2 id="sh-title">An anderes Gerät senden</h2>
+    <p class="note" style="margin-top:0">Überträgt Ziele, Tasks, Sperrgebiete, Startfenster, Briefing-Wind und die Gebietseinstellungen. Das andere Gerät öffnet den Link oder scannt den QR-Code mit der Kamera.</p>
+    <label class="checkrow"><input type="checkbox" id="sh-wind" checked> Briefing-Wind mitsenden</label>
+    <div id="sh-qr" style="display:flex;justify-content:center;margin:.6rem 0"></div>
+    <p class="note" id="sh-msg"></p>
+    <div class="btns">
+      <button class="btn" data-close>Schließen</button>
+      <button class="btn primary" id="sh-send">Link teilen</button>
+    </div>
+  </div>
+</div>
+
+<!-- Empfangen -->
+<div class="back" id="sheet-recv">
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="rv-title">
+    <h2 id="rv-title">Daten empfangen</h2>
+    <p class="note" id="rv-info" style="margin-top:0"></p>
+    <div class="btns" style="flex-direction:column">
+      <button class="btn primary" id="rv-merge">Ergänzen</button>
+      <button class="btn danger" id="rv-replace">Ersetzen</button>
+      <button class="btn" id="rv-cancel">Abbrechen</button>
+    </div>
+  </div>
+</div>
+
 <!-- Startcheck -->
 <div class="back" id="sheet-check">
   <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="ck-title">
@@ -863,6 +891,7 @@ details.more summary{cursor:pointer;color:var(--ink-2);font-size:.9rem;margin:.4
       <button class="btn primary" id="log-save">Fahrt speichern</button>
       <button class="btn" id="log-gpxcur">GPX exportieren</button>
     </div>
+    <label class="btn small filebtn" style="margin-top:.4rem">Logger-Datei (IGC) laden<input type="file" id="log-igc" accept=".igc,.IGC,text/plain" hidden></label>
     <p class="note" id="log-msg"></p>
     <h3>Markierungen dieser Fahrt</h3>
     <ul class="tlist" id="notelist"></ul>
@@ -956,6 +985,7 @@ details.more summary{cursor:pointer;color:var(--ink-2);font-size:.9rem;margin:.4
       <button class="btn small" id="bk-save">Sicherung speichern</button>
       <label class="btn small filebtn">Sicherung laden<input type="file" id="bk-load" accept=".json,application/json" hidden></label>
     </div>
+    <button class="btn small" id="sh-open" style="margin-top:.4rem">An anderes Gerät senden (Link oder QR)</button>
     <div class="row" style="align-items:center;margin-top:.4rem"><p class="note" id="bk-msg" style="margin:0"></p><button class="btn small danger" id="bk-apply" style="flex:0 0 auto" hidden>Ersetzen</button></div>
 
     <details class="more" style="margin-top:1rem"><summary><b>Erweitert</b></summary>
@@ -2609,6 +2639,46 @@ function renderLog(){
     ul.appendChild(li);
   }
 }
+function parseIGC(text){
+  let date = null, pilot = '', last = -1, add = 0;
+  const pts = [], ev = [];
+  for (const ln of text.split(/\r?\n/)) {
+    if (/^HFDTE/i.test(ln)) { const m = ln.match(/(\d{2})(\d{2})(\d{2})/); if (m) date = Date.UTC(2000 + +m[3], +m[2] - 1, +m[1]); }
+    else if (/^HFPLT/i.test(ln)) pilot = (ln.split(':')[1] || '').trim();
+    else if (ln[0] === 'B' && ln.length >= 35) {
+      const sec = +ln.slice(1, 3) * 3600 + +ln.slice(3, 5) * 60 + +ln.slice(5, 7);
+      if (last >= 0 && sec < last - 3600) add += 86400; last = sec;
+      let lat = +ln.slice(7, 9) + (+ln.slice(9, 14) / 1000) / 60; if (ln[14] === 'S') lat = -lat;
+      let lon = +ln.slice(15, 18) + (+ln.slice(18, 23) / 1000) / 60; if (ln[23] === 'W') lon = -lon;
+      const pa = +ln.slice(25, 30), ga = +ln.slice(30, 35);
+      if (!isFinite(lat) || !isFinite(lon) || (lat === 0 && lon === 0)) continue;
+      pts.push({ lat, lon, alt: ga > 0 ? ga : pa, sec: sec + add });
+    } else if (ln[0] === 'E' && ln.length >= 10) {
+      const sec = +ln.slice(1, 3) * 3600 + +ln.slice(3, 5) * 60 + +ln.slice(5, 7);
+      ev.push({ sec: sec + add, code: ln.slice(7, 10), text: ln.slice(10).trim() });
+    }
+  }
+  const base = date != null ? date : Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), new Date().getUTCDate());
+  return { pilot, pts:pts.map(p => ({ ...p, t: base + p.sec * 1000 })), ev:ev.map(e => ({ ...e, t: base + e.sec * 1000 })) };
+}
+$('#log-igc').addEventListener('change', async e => {
+  const f = e.target.files && e.target.files[0]; e.target.value = ''; if (!f) return;
+  try {
+    const g = parseIGC(await f.text());
+    if (g.pts.length < 2) { logMsg('In der Datei wurden keine Trackpunkte gefunden.'); return; }
+    const z = S.settings.zoneAuto ? zoneOf(g.pts[0].lon) : S.settings.zone;
+    const track = g.pts.map(p => { const u = ll2utm(p.lat, p.lon, z); return [u.E, u.N, p.alt / FT, p.t]; });
+    const nearest = t => track.reduce((a, q) => Math.abs(q[3] - t) < Math.abs(a[3] - t) ? q : a, track[0]);
+    const notes = g.ev.map(x => { const q = nearest(x.t); return { id:uid(), E:q[0], N:q[1], altFt:q[2], t:x.t, text:'Logger ' + x.code + (x.text ? ' ' + x.text : '') }; });
+    const id = uid(), date = track[0][3];
+    const name = 'Logger ' + new Date(date).toLocaleString('de-AT', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' }) + (g.pilot ? ', ' + g.pilot : '');
+    const rec = { id, name, date, track, targets:JSON.parse(JSON.stringify(S.targets)), tasks:[], pz:[], notes, zone:z, logger:true };
+    await idbPut('flight:' + id, rec);
+    const st = trackStats(track);
+    S.flights.unshift({ id, name, date, dur:st.dur, dist:st.dist, maxA:st.maxA, logger:true }); save(); renderLog();
+    logMsg('Logger-Track geladen: ' + track.length + ' Punkte' + (notes.length ? ', ' + notes.length + ' Ereignisse' : '') + '. Mit „Ansehen“ vergleichst du ihn mit deiner eigenen Fahrt.');
+  } catch (err) { logMsg('Die Logger-Datei konnte nicht gelesen werden.'); }
+});
 async function storeFlight(){
   const id = uid(), date = S.track[0][3];
   const name = new Date(date).toLocaleString('de-AT', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
@@ -2664,12 +2734,21 @@ async function openReplay(id){
   closeSheets(); if (tool) setTool(tool);
   let minE = Infinity, maxE = -Infinity, minN = Infinity, maxN = -Infinity, minA = Infinity, maxA = -Infinity;
   for (const q of f.track) { minE = Math.min(minE, q[0]); maxE = Math.max(maxE, q[0]); minN = Math.min(minN, q[1]); maxN = Math.max(maxN, q[1]); minA = Math.min(minA, q[2]); maxA = Math.max(maxA, q[2]); }
-  replay = { f, idx:0, minA, maxA };
+  replay = { f, idx:0, minA, maxA, cmp:null };
+  { const t0 = f.track[0][3], t1 = f.track[f.track.length - 1][3];
+    const other = S.flights.find(x => x.id !== id && !!x.logger !== !!f.logger && Math.abs(x.date - t0) < 6 * 3600000);
+    if (other) { const o = await idbGet('flight:' + other.id).catch(() => null); if (o && o.track && o.track.length > 1 && o.track[o.track.length - 1][3] > t0 && o.track[0][3] < t1) replay.cmp = o; } }
   setFollow(false); view.cx = (minE + maxE) / 2; view.cy = (minN + maxN) / 2;
   view.s = clampS(Math.min(W / Math.max(maxE - minE, 500), H / Math.max(maxN - minN, 500)) * .8);
   const sl = $('#rp-slider'); sl.max = f.track.length - 1; sl.value = 0;
-  setText('rp-title', f.name + ', Farbe: blau ' + Math.round(minA) + ' ft, orange ' + Math.round(maxA) + ' ft'); $('#replay').hidden = false; $('.mapwrap').classList.add('replaying');
+  setText('rp-title', f.name + ', Farbe: blau ' + Math.round(minA) + ' ft, orange ' + Math.round(maxA) + ' ft' + (replay.cmp ? '; grau gestrichelt: ' + replay.cmp.name : '')); $('#replay').hidden = false; $('.mapwrap').classList.add('replaying');
   updateReplay(); requestDraw();
+}
+function trackAt(tr, t){
+  if (!tr.length || t < tr[0][3] - 5000 || t > tr[tr.length - 1][3] + 5000) return null;
+  let lo = 0, hi = tr.length - 1; while (hi - lo > 1) { const m = (lo + hi) >> 1; if (tr[m][3] <= t) lo = m; else hi = m; }
+  const a = tr[lo], b = tr[hi], f = b[3] > a[3] ? Math.max(0, Math.min(1, (t - a[3]) / (b[3] - a[3]))) : 0;
+  return [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f, a[2] + (b[2] - a[2]) * f, t];
 }
 function closeReplay(){ replay = null; $('#replay').hidden = true; $('.mapwrap').classList.remove('replaying'); setFollow(true); }
 function updateReplay(){
@@ -2678,13 +2757,20 @@ function updateReplay(){
   const dt = (b[3] - a[3]) / 1000, dx = b[0] - a[0], dy = b[1] - a[1], gs = dt > 0 ? Math.hypot(dx, dy) / dt : 0;
   const d = new Date(q[3]);
   setText('rp-info', pad(d.getHours(), 2) + ':' + pad(d.getMinutes(), 2) + ':' + pad(d.getSeconds(), 2) + '   ' + Math.round(q[2]) + ' ft   '
-    + (gs * 3.6).toFixed(1).replace('.', ',') + ' km/h   ' + (gs > .3 ? fmtDeg(bearing(dx, dy)) : '—'));
+    + (gs * 3.6).toFixed(1).replace('.', ',') + ' km/h   ' + (gs > .3 ? fmtDeg(bearing(dx, dy)) : '—')
+    + (replay.cmp ? (() => { const o = trackAt(replay.cmp.track, q[3]); return o ? '   Abstand ' + fmtDist(Math.hypot(o[0] - q[0], o[1] - q[1])) + ', ' + (Math.round(q[2] - o[2]) >= 0 ? '+' : '') + Math.round(q[2] - o[2]) + ' ft' : ''; })() : ''));
   requestDraw();
 }
 $('#rp-slider').addEventListener('input', e => { if (replay) { replay.idx = +e.target.value; updateReplay(); } });
 $('#rp-close').addEventListener('click', closeReplay);
 function drawReplay(){
   const { f, idx, minA, maxA } = replay, tr = f.track, span = Math.max(1, maxA - minA);
+  if (replay.cmp) {
+    const ot = replay.cmp.track; ctx.strokeStyle = colors['ink-2']; ctx.lineWidth = 2; ctx.setLineDash([7, 5]); ctx.beginPath();
+    ot.forEach((q, i) => { const [x, y] = w2s(q[0], q[1]); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }); ctx.stroke(); ctx.setLineDash([]);
+    const o = trackAt(ot, tr[idx][3]); if (o) { const [x, y] = w2s(o[0], o[1]); ctx.beginPath(); ctx.arc(x, y, 7, 0, 2 * Math.PI); ctx.fillStyle = colors['ink-2']; ctx.fill(); }
+    for (const k of replay.cmp.tasks || []) (k.marks || []).forEach((mk, i) => { const [x, y] = w2s(mk.E, mk.N); ctx.strokeStyle = colors['ink-2']; ctx.lineWidth = 2; ctx.strokeRect(x - 5, y - 5, 10, 10); });
+  }
   ctx.lineWidth = 3.5; ctx.lineCap = 'round';
   for (let i = 1; i < tr.length; i++) {
     const [x1, y1] = w2s(tr[i - 1][0], tr[i - 1][1]), [x2, y2] = w2s(tr[i][0], tr[i][1]), fr = (tr[i][2] - minA) / span;
@@ -2697,6 +2783,7 @@ function drawReplay(){
     label(t.name, x + 12, y + 4, { size:12 });
   }
   for (const k of f.tasks || []) (k.marks || []).forEach((mk, i) => { const [x, y] = w2s(mk.E, mk.N); ctx.fillStyle = colors.ink; ctx.fillRect(x - 5, y - 5, 10, 10); label('T' + k.nr + ' M' + (i + 1), x + 8, y - 6, { size:11, weight:700 }); });
+  for (const n of f.notes || []) if (f.logger) { const [x, y] = w2s(n.E, n.N); ctx.beginPath(); ctx.moveTo(x, y - 7); ctx.lineTo(x + 6, y); ctx.lineTo(x, y + 7); ctx.lineTo(x - 6, y); ctx.closePath(); ctx.fillStyle = colors.ok; ctx.fill(); label(n.text, x + 9, y + 4, { size:11, weight:700, color:colors.ok }); }
   const [bx, by] = w2s(tr[idx][0], tr[idx][1]);
   ctx.beginPath(); ctx.arc(bx, by, 9, 0, 2 * Math.PI); ctx.fillStyle = colors.balloon; ctx.fill(); ctx.lineWidth = 3; ctx.strokeStyle = colors.panel; ctx.stroke();
 }
@@ -3198,10 +3285,14 @@ let tsResult = null, tsImages = [], sampleFn = null, sampleImages = false, impMo
   } catch (e) { sampleFn = null; }
 })();
 function loadScript(src){ return new Promise((res, rej) => { const el = document.createElement('script'); el.src = src; el.onload = res; el.onerror = () => rej(new Error('load')); document.head.appendChild(el); }); }
-async function pdfText(file){
+async function pdfLib(){
   if (!window.pdfjsLib) await loadScript('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js');
   const lib = window.pdfjsLib;
   lib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  return lib;
+}
+async function pdfText(file){
+  const lib = await pdfLib();
   const doc = await lib.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise;
   let out = '';
   for (let p = 1; p <= doc.numPages; p++) {
@@ -3210,10 +3301,14 @@ async function pdfText(file){
       if (!it.str || !it.str.trim()) continue;
       const y = it.transform[5], x = it.transform[4];
       let row = rows.find(r => Math.abs(r.y - y) < 3); if (!row) { row = { y, parts:[] }; rows.push(row); }
-      row.parts.push({ x, s:it.str });
+      row.parts.push({ x, s:it.str, w:it.width || 0, fs:Math.abs(it.transform[0]) || 10 });
     }
     rows.sort((a, b) => b.y - a.y);
-    out += rows.map(r => r.parts.sort((a, b) => a.x - b.x).map(q => q.s).join(' ')).join('\n') + '\n';
+    out += rows.map(r => {
+      let t = '', end = null;
+      for (const q of r.parts.sort((a, b) => a.x - b.x)) { if (end != null && q.x - end > q.fs * .18) t += ' '; t += q.s; end = q.x + q.w; }
+      return t;
+    }).join('\n') + '\n';
   }
   return out;
 }
@@ -4003,12 +4098,28 @@ function setMapBlob(blob){
 }
 $('#map-file').addEventListener('change', async e => {
   const file = e.target.files && e.target.files[0]; e.target.value = ''; if (!file) return;
-  $('#map-state').textContent = 'Bild wird vorbereitet …';
+  $('#map-state').textContent = 'Karte wird vorbereitet …';
   try {
-    const url = URL.createObjectURL(file), img = new Image(); img.src = url; await img.decode();
-    const w = img.naturalWidth, h = img.naturalHeight, k = Math.min(1, Math.sqrt(16e6 / (w * h)), 6000 / Math.max(w, h));
-    const cw = Math.round(w * k), ch = Math.round(h * k), c = document.createElement('canvas');
-    c.width = cw; c.height = ch; c.getContext('2d').drawImage(img, 0, 0, cw, ch); URL.revokeObjectURL(url);
+    let c;
+    if (/pdf$/i.test(file.type) || /\.pdf$/i.test(file.name)) {
+      $('#map-state').textContent = 'PDF wird gelesen …';
+      const lib = await pdfLib(), doc = await lib.getDocument({ data:new Uint8Array(await file.arrayBuffer()) }).promise;
+      let pg = 1;
+      if (doc.numPages > 1) { const a = prompt('Das PDF hat ' + doc.numPages + ' Seiten. Welche Seite ist die Karte?', '1'); pg = Math.min(doc.numPages, Math.max(1, parseInt(a, 10) || 1)); }
+      const page = await doc.getPage(pg), v1 = page.getViewport({ scale:1 });
+      const k = Math.min(Math.sqrt(16e6 / (v1.width * v1.height)), 6000 / Math.max(v1.width, v1.height));
+      const vp = page.getViewport({ scale:k }); c = document.createElement('canvas');
+      c.width = Math.floor(vp.width); c.height = Math.floor(vp.height);
+      const cx2 = c.getContext('2d'); cx2.fillStyle = '#fff'; cx2.fillRect(0, 0, c.width, c.height);
+      $('#map-state').textContent = 'PDF wird gezeichnet …';
+      await page.render({ canvasContext:cx2, viewport:vp }).promise;
+    } else {
+      const url = URL.createObjectURL(file), img = new Image(); img.src = url; await img.decode();
+      const w = img.naturalWidth, h = img.naturalHeight, k = Math.min(1, Math.sqrt(16e6 / (w * h)), 6000 / Math.max(w, h));
+      c = document.createElement('canvas'); c.width = Math.round(w * k); c.height = Math.round(h * k);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); URL.revokeObjectURL(url);
+    }
+    const cw = c.width, ch = c.height;
     const blob = await new Promise(r => c.toBlob(r, 'image/jpeg', .88));
     let stored = true; try { await idbPut('map', blob); } catch (err) { stored = false; }
     setMapBlob(blob);
@@ -4016,7 +4127,7 @@ $('#map-file').addEventListener('change', async e => {
     S.map = { has:true, w:cw, h:ch, show:true, opacity:S.map.opacity || .85, cal:false, a:[sc, 0], b:[view.cx - sc * cw / 2, view.cy + sc * ch / 2] };
     save(); closeSheets(); startCal();
     if (!stored) setStatus('Karte nicht gespeichert', 'warn');
-  } catch (err) { $('#map-state').textContent = 'Das Bild konnte nicht gelesen werden. Versuch es mit JPG oder PNG.'; }
+  } catch (err) { $('#map-state').textContent = 'Die Karte konnte nicht gelesen werden. Versuch es mit JPG, PNG oder PDF; ein PDF braucht beim ersten Mal Internet.'; }
 });
 $('#map-op').addEventListener('input', e => { S.map.opacity = parseFloat(e.target.value); save(); requestDraw(); });
 $('#map-toggle').addEventListener('click', () => { S.map.show = !S.map.show; save(); renderMapSheet(); requestDraw(); });
@@ -4253,9 +4364,84 @@ if (navigator.serviceWorker) navigator.serviceWorker.addEventListener('message',
 function setFanUi(){ $('#btn-fan').setAttribute('aria-pressed', !!S.settings.fanOn); }
 $('#btn-fan').addEventListener('click', () => { S.settings.fanOn = !S.settings.fanOn; setFanUi(); save(); requestDraw(); });
 setFanUi();
+/* ---------- Teilen per Link / QR ---------- */
+const b64u = buf => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+const unb64u = str => { const b = atob(str.replace(/-/g, '+').replace(/_/g, '/')); const u = new Uint8Array(b.length); for (let i = 0; i < b.length; i++) u[i] = b.charCodeAt(i); return u; };
+async function packShare(){
+  const st = S.settings, r = v => Math.round(v);
+  const d = { v:1, z:st.zone, re:r(st.refE), rn:r(st.refN), de:st.digE, dn:st.digN, fl:S.flight,
+    t:S.targets.map(t => [t.id, t.name, r(t.E), r(t.N), t.radii || [], t.elevFt == null ? null : t.elevFt, t.locked ? 1 : 0, t.sym || 'x', t.color || '', t.ringCol || []]),
+    k:S.tasks.map(k => ({ ...k, marks:[], decl:[] })), p:S.pz,
+    w: $('#sh-wind').checked ? S.windManual.filter(w => w.src === 'b') : [] };
+  const raw = new TextEncoder().encode(JSON.stringify(d));
+  if (window.CompressionStream) { const cs = new Blob([raw]).stream().pipeThrough(new CompressionStream('deflate-raw')); return 'z' + b64u(await new Response(cs).arrayBuffer()); }
+  return 'j' + b64u(raw.buffer);
+}
+async function unpackShare(str){
+  const bytes = unb64u(str.slice(1));
+  let txt;
+  if (str[0] === 'z') { const ds = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('deflate-raw')); txt = await new Response(ds).text(); }
+  else txt = new TextDecoder().decode(bytes);
+  return JSON.parse(txt);
+}
+function shareBase(){ return location.origin + location.pathname; }
+async function renderShare(){
+  setText('sh-msg', 'Wird vorbereitet …'); $('#sh-qr').innerHTML = '';
+  if (window.claude || !window.__wfOwnSite) { setText('sh-msg', 'Teilen per Link geht nur auf deiner eigenen Seite. Hier bitte „Sicherung speichern“ verwenden.'); $('#sh-send').disabled = true; return; }
+  $('#sh-send').disabled = false;
+  const code = await packShare(), url = shareBase() + '#wf=' + code; shareUrl = url;
+  const n = S.targets.length + ' Ziele, ' + S.tasks.length + ' Tasks, ' + S.pz.length + ' Sperrgebiete';
+  if (url.length > 2300) { setText('sh-msg', n + '. Zu viele Daten für einen QR-Code, bitte den Link teilen (' + Math.round(url.length / 1000) + ' kB).'); return; }
+  try {
+    if (!window.qrcode) await loadScript('https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js');
+    const qr = window.qrcode(0, 'L'); qr.addData(url); qr.make();
+    $('#sh-qr').innerHTML = qr.createSvgTag({ cellSize:4, margin:4, scalable:true });
+    const svg = $('#sh-qr svg'); if (svg) { svg.style.width = 'min(80vw, 320px)'; svg.style.height = 'auto'; svg.style.background = '#fff'; }
+    setText('sh-msg', n + '. QR-Code mit der Kamera des anderen Geräts scannen oder den Link teilen.');
+  } catch (e) { setText('sh-msg', n + '. Für den QR-Code fehlt gerade die Internetverbindung, der Link funktioniert trotzdem.'); }
+}
+let shareUrl = '', recvData = null;
+$('#sh-open').addEventListener('click', () => { closeSheets(); openSheet('#sheet-share'); renderShare(); });
+$('#sh-wind').addEventListener('change', renderShare);
+$('#sh-send').addEventListener('click', async () => {
+  if (!shareUrl) return;
+  try { if (navigator.share) { await navigator.share({ title:'Wettfahrt-Daten', url:shareUrl }); return; } } catch (e) { if (e && e.name === 'AbortError') return; }
+  try { await navigator.clipboard.writeText(shareUrl); setText('sh-msg', 'Link kopiert. Füge ihn z. B. in WhatsApp ein.'); } catch (e) { prompt('Link kopieren:', shareUrl); }
+});
+function applyRecv(replace){
+  const d = recvData; if (!d) return;
+  const st = S.settings;
+  if (d.z) { st.zone = d.z; st.zoneAuto = false; } if (d.re) { st.refE = d.re; st.refN = d.rn; } if (d.de) { st.digE = d.de; st.digN = d.dn; }
+  const tg = (d.t || []).map(a => ({ id:a[0], name:a[1], E:a[2], N:a[3], radii:a[4] || [], elevFt:a[5], locked:!!a[6], sym:a[7] || 'x', color:a[8] || '', ringCol:a[9] || [] }));
+  if (replace) { S.targets = tg; S.tasks = d.k || []; S.pz = d.p || []; S.activeId = null; S.activeTaskId = null; }
+  else {
+    for (const t of tg) { const ex = S.targets.find(x => x.id === t.id || Math.hypot(x.E - t.E, x.N - t.N) < 15); if (ex) Object.assign(ex, { ...t, id:ex.id }); else S.targets.push(t); }
+    for (const k of d.k || []) { const ex = S.tasks.find(x => x.nr === k.nr); if (ex) Object.assign(ex, { ...k, marks:ex.marks || [], decl:ex.decl || [] }); else S.tasks.push(k); }
+    for (const z of d.p || []) if (!S.pz.some(x => x.name === z.name)) S.pz.push(z);
+    S.tasks.sort((a, b) => a.nr - b.nr);
+  }
+  if (d.fl) S.flight = { ...S.flight, ...d.fl };
+  for (const w of d.w || []) { S.windManual = S.windManual.filter(x => Math.abs(x.alt - w.alt) >= 10); S.windManual.push(w); }
+  recvData = null; invalidatePlan(); save(); closeSheets(); requestDraw(); updateHud();
+  setStatus('Daten übernommen', 'ok');
+}
+$('#rv-merge').addEventListener('click', () => applyRecv(false));
+$('#rv-replace').addEventListener('click', e => confirmBtn(e.currentTarget, 'Ersetzen', () => applyRecv(true)));
+$('#rv-cancel').addEventListener('click', () => { recvData = null; closeSheets(); });
+async function checkRecv(){
+  const m = location.hash.match(/^#wf=([zj][A-Za-z0-9_-]+)/); if (!m) return;
+  history.replaceState(null, '', location.pathname + location.search);
+  try {
+    recvData = await unpackShare(m[1]);
+    setText('rv-info', 'Empfangen: ' + (recvData.t || []).length + ' Ziele, ' + (recvData.k || []).length + ' Tasks, ' + (recvData.p || []).length + ' Sperrgebiete' + ((recvData.w || []).length ? ', ' + recvData.w.length + ' Windhöhen' : '') + '. Ergänzen behält deine Daten, Ersetzen überschreibt Ziele, Tasks und Sperrgebiete.');
+    closeSheets(); openSheet('#sheet-recv');
+  } catch (e) { setStatus('Link ungültig', 'warn'); }
+}
+
 setTrackUi();
 applyMode();
-if (S.firstRun) openSheet('#sheet-welcome');
+if (location.hash.startsWith('#wf=')) { S.firstRun = false; save(); checkRecv(); }
+else if (S.firstRun) openSheet('#sheet-welcome');
 else if (S.settings.mode === 'gps' && !S.trackOn && Date.now() - (S.ckShownAt || 0) > 3 * 3600000) {
   setTimeout(() => { if (document.querySelector('.back.open')) return; if (checks().some(c => !c.ok)) { S.ckShownAt = Date.now(); save(); openers.check(); } }, 4000);
 }

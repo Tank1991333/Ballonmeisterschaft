@@ -1,9 +1,10 @@
 /* Wettfahrt – Offline-Speicher. Bei jeder neuen Version die Nummer erhöhen. */
-const CACHE = 'wettfahrt-2026-10-09-7';
+const CACHE = 'wettfahrt-2026-10-09-8';
 const CORE = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png'];
 const EXTRA = [
   'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js',
-  'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'
+  'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js',
+  'https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js'
 ];
 self.addEventListener('install', e => {
   e.waitUntil((async () => {
