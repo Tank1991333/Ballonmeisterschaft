@@ -184,7 +184,8 @@ input[type=range]{padding:0;border:0;background:none;accent-color:var(--ink)}
 .filebtn{display:block;cursor:pointer}
 .taskhelp{grid-column:1/-1;display:flex;align-items:center;gap:.6rem;margin-top:.45rem;border:1.5px solid var(--panel-edge);
   border-left:5px solid var(--ink);border-radius:10px;padding:.35rem .4rem .35rem .6rem;background:var(--paper-2)}
-.taskhelp .th-main{flex:1;min-width:0;display:grid;grid-template-columns:auto 1fr;align-items:baseline;gap:0 .5rem}
+.taskhelp{flex-wrap:wrap}
+.taskhelp .th-main{flex:1 1 9rem;min-width:9rem;display:grid;grid-template-columns:auto 1fr;align-items:baseline;gap:0 .5rem}
 .taskhelp .btn{flex:0 0 auto}
 .th-main span:empty{display:none}
 .dial.off{visibility:hidden}
@@ -197,6 +198,12 @@ input[type=range]{padding:0;border:0;background:none;accent-color:var(--ink)}
 .checkrow{display:flex;gap:.6rem;align-items:center;font-weight:600;margin:.2rem 0 .7rem}
 .checkrow input{width:1.3rem;height:1.3rem;accent-color:var(--ink)}
 .wtab td.old{color:var(--warn)}
+.ringrow{display:flex;gap:.4rem;margin-bottom:.4rem}
+.ringrow input{flex:1 1 40%;min-width:0}
+.ringrow select{flex:1 1 45%;min-width:0}
+.ringrow button{flex:0 0 46px;border:1.5px solid var(--panel-edge);background:var(--paper-2);border-radius:9px;font-size:1.1rem}
+.symgrid .sw span{display:block;width:26px;height:26px;border-radius:50%;border:2px solid var(--ink)}
+#btn-fan[aria-pressed="true"]{background:var(--ink);color:var(--panel);border-color:var(--ink)}
 .stepper{display:flex;gap:.3rem}
 .stepper button{flex:0 0 46px;border:1.5px solid var(--panel-edge);background:var(--paper-2);border-radius:9px;font-size:1.35rem;font-weight:700;padding:0}
 .stepper input{text-align:center;min-width:0}
@@ -323,6 +330,7 @@ details.more summary{cursor:pointer;color:var(--ink-2);font-size:.9rem;margin:.4
   <div class="overlay">
     <div class="alert" id="alert" role="alert" hidden></div>
     <div class="gpsbar" id="gpsbar" hidden><span id="gps-text"></span><button class="btn small" id="gps-retry" style="flex:0 0 auto">Erneut versuchen</button></div>
+    <div class="gpsbar" id="lgbar" hidden style="border-color:var(--ok);border-left-color:var(--ok)"><span id="lg-text"></span><button class="btn small primary" id="lg-ok" style="flex:0 0 auto">OK</button></div>
     <div class="gpsbar wait" id="updbar" hidden><span>Eine neue Version der App ist geladen.</span><button class="btn small primary" id="upd-reload" style="flex:0 0 auto">Neu laden</button></div>
     <div class="crewcard" id="crewcard" hidden></div>
     <div class="hint" id="hint" hidden><span id="hint-text"></span><button class="ghost" id="hint-cancel" hidden>Abbrechen</button><button id="hint-done">Fertig</button></div>
@@ -337,6 +345,9 @@ details.more summary{cursor:pointer;color:var(--ink-2);font-size:.9rem;margin:.4
     </button>
     <button class="rbtn" id="btn-note" aria-label="Markierung am Track setzen" title="Markierung setzen">
       <svg viewBox="0 0 24 24"><path d="M12 21s-6-5.3-6-10a6 6 0 0 1 12 0c0 4.7-6 10-6 10z"/><circle cx="12" cy="11" r="2.2"/></svg>
+    </button>
+    <button class="rbtn" id="btn-fan" aria-pressed="false" aria-label="Windfächer ein oder aus" title="Windfächer">
+      <svg viewBox="0 0 24 24"><path d="M12 20L4 7M12 20L8.5 4.5M12 20l3.5-15.5M12 20l8-13"/></svg>
     </button>
     <button class="rbtn txt" id="btn-view" aria-pressed="false" aria-label="Ansicht wechseln: Planung oder Anflug" title="Ansicht wechseln">Plan</button>
     <div class="gap"></div>
@@ -399,7 +410,7 @@ details.more summary{cursor:pointer;color:var(--ink-2);font-size:.9rem;margin:.4
   <dl class="stats">
     <div><dt id="passl">Vorbeiflug</dt><dd id="passv">—</dd></div>
     <div><dt>Fahrt km/h</dt><dd id="spdv">—</dd></div>
-    <div id="stat-alt" role="button" tabindex="0" aria-label="Höhe abgleichen"><dt>Höhe</dt><dd id="altv">—</dd></div>
+    <div id="stat-alt" role="button" tabindex="0" aria-label="Höhe abgleichen"><dt id="altl">Höhe</dt><dd id="altv">—</dd></div>
   </dl>
   <div class="taskhelp" id="taskhelp" hidden>
     <div class="th-main"><span class="adv-l" id="th-l"></span><span class="adv-v" id="th-v"></span><span class="adv-s" id="th-s"></span></div>
@@ -435,7 +446,7 @@ details.more summary{cursor:pointer;color:var(--ink-2);font-size:.9rem;margin:.4
       <button data-open="reset"><b>Fahrt-Punkte löschen</b><small>Karte für die nächste Fahrt</small></button>
     </div>
     <button class="btn" data-open="settings" style="width:100%;margin-top:1rem">Einstellungen<small id="mt-set" style="display:none"></small></button>
-    <p class="note" style="text-align:center;margin-top:.9rem">Version 2026-10-09</p>
+    <p class="note" style="text-align:center;margin-top:.9rem">Version 2026-10-09.2</p>
   </div>
 </div>
 
@@ -502,12 +513,13 @@ details.more summary{cursor:pointer;color:var(--ink-2);font-size:.9rem;margin:.4
       <input id="tf-coord" class="num" inputmode="numeric" autocomplete="off" placeholder="1234/5678">
       <small id="tf-prev">4/4, 5/5 oder 6/7, z. B. 1234/5678</small>
     </label>
-    <div class="row">
-      <label class="field"><span>Kreise (Radius)</span><input id="tf-radii" class="num" autocomplete="off" placeholder="100, 500, 2km"></label>
-      <label class="field" style="flex:0 0 8.5rem"><span>Bodenhöhe ft</span><input id="tf-elev" class="num" inputmode="numeric" placeholder="optional"></label>
+    <div class="field"><span>Kreise (Radius in m)</span>
+      <div id="tf-rings"></div>
+      <button type="button" class="btn small" id="tf-ring-add">+ Kreis</button>
     </div>
-    <p class="note">Mehrere Radien mit Komma trennen, ohne Einheit in Metern. Die Bodenhöhe am Ziel verbessert die Abwurfberechnung.</p>
-    <div class="field" style="margin-top:.8rem"><span>Symbol</span><div class="symgrid" id="tf-sym"></div></div>
+    <label class="field" style="max-width:11rem"><span>Bodenhöhe ft</span><input id="tf-elev" class="num" inputmode="numeric" placeholder="optional"></label>
+    <div class="field" style="margin-top:.6rem"><span>Farbe (z. B. wie der Marker)</span><div class="symgrid" id="tf-col"></div></div>
+    <div class="field"><span>Symbol</span><div class="symgrid" id="tf-sym"></div></div>
     <label class="checkrow"><input type="checkbox" id="tf-lock"> Gesperrt, nicht verschiebbar</label>
     <h3>Marker-Ziel</h3>
     <label class="checkrow"><input type="checkbox" id="tf-ga"> Endanflug am Boden planen</label>
@@ -797,6 +809,7 @@ details.more summary{cursor:pointer;color:var(--ink-2);font-size:.9rem;margin:.4
     </label>
     <label class="field"><span>Deklarierte Höhe ft (optional)</span><input id="dc-alt" class="num" inputmode="numeric" autocomplete="off"></label>
     <div class="decl-card" id="dc-card"></div>
+    <p class="note err" id="dc-warn" style="font-weight:600"></p>
     <div class="btns">
       <button class="btn" data-close>Abbrechen</button>
       <button class="btn primary" id="dc-ok">Deklaration festhalten</button>
@@ -904,6 +917,8 @@ details.more summary{cursor:pointer;color:var(--ink-2);font-size:.9rem;margin:.4
     <div class="field"><span>Farben</span><div class="seg">
       <button data-theme-set="auto">Automatisch</button><button data-theme-set="light">Hell</button><button data-theme-set="dark">Dunkel</button>
     </div></div>
+    <label class="field"><span>Schrift auf der Karte</span>
+      <select id="st-font"><option value="1">Normal</option><option value="1.25">Groß</option><option value="1.5">Sehr groß</option></select></label>
     <label class="checkrow"><input type="checkbox" id="st-big"> Große Tasten für Handschuhe</label>
     <button class="btn small" id="st-install" hidden>Als App installieren</button>
     <p class="note" id="st-installnote" style="margin-top:0"></p>
@@ -967,7 +982,7 @@ const defaults = () => ({
               simFrom:250, simKmh:14, simAltFt:1500, simAltTarget:1500, simRate:1, theme:'auto',
               groundFt:0, fallMs:5, pzLook:300,
               climbFpm:500, sinkFpm:500, minAltFt:500, maxAltFt:5000, tolM:100,
-              lowFt:50, minFinalM:500, sinkOnly:true, importLock:true, importSym:'x', digE:4, digN:4, altOffsetFt:0, autoApproachM:3000, sound:false, big:false, windMaxAge:45 },
+              lowFt:50, minFinalM:500, sinkOnly:true, importLock:true, importSym:'x', mapFont:1, fanOn:false, digE:4, digN:4, altOffsetFt:0, autoApproachM:3000, sound:false, big:false, windMaxAge:45 },
   crew: { role:'off', status:'air' },
   targets: [], activeId: null, track: [], simPos: null,
   tasks: [], activeTaskId: null, flight: { launchFrom:'', launchTo:'' },
@@ -1472,9 +1487,10 @@ function requestDraw(){ if (drawQueued) return; drawQueued = true; requestAnimat
 function seg(x1, y1, x2, y2){ ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke(); }
 function dot(x, y, r, fill){ ctx.beginPath(); ctx.arc(x, y, r, 0, 2 * Math.PI); ctx.fillStyle = fill; ctx.fill(); }
 function label(text, x, y, opts = {}){
-  ctx.font = (opts.weight || 600) + ' ' + (opts.size || 13) + 'px ' + FONT_NUM;
+  const F = S.settings.mapFont || 1;
+  ctx.font = (opts.weight || 600) + ' ' + Math.round((opts.size || 13) * F) + 'px ' + FONT_NUM;
   ctx.textAlign = opts.align || 'left'; ctx.textBaseline = 'alphabetic';
-  ctx.lineJoin = 'round'; ctx.lineWidth = 4; ctx.strokeStyle = colors.paper; ctx.strokeText(text, x, y);
+  ctx.lineJoin = 'round'; ctx.lineWidth = 4 * F; ctx.strokeStyle = colors.paper; ctx.strokeText(text, x, y);
   ctx.fillStyle = opts.color || colors.ink; ctx.fillText(text, x, y);
 }
 let frame = {};
@@ -1485,7 +1501,7 @@ function draw(){
   ctx.fillStyle = colors.paper; ctx.fillRect(0, 0, W, H);
   if (replay) { updateCursorBar(false); drawMapImage(); drawGrid(); drawPz(); drawReplay(); drawNotes(replay.f.notes || [], true); drawScale(); return; }
   frame = { m, prof, t, plan:getPlan(), drop:dropFor(t, profFor(t, prof), m), th:taskHelp(activeTask(), m, prof) };
-  drawMapImage(); drawGrid(); drawPz(); drawTrack(); drawNotes(S.notes); drawTargets(); drawTaskHelp(); drawAdvice(); drawDrop();
+  drawMapImage(); drawGrid(); drawPz(); drawTrack(); drawNotes(S.notes); drawTargets(); drawTaskHelp(); if (S.settings.fanOn) drawFan(); drawAdvice(); drawDrop();
   drawMeasure(); drawDraft(); drawRemote(); drawBalloon(); drawScale();
   const cur = (!view.follow || tool === 'move' || tool === 'cal' || calpadOn) && !mpad;
   if (cur) drawCursor();
@@ -1547,6 +1563,9 @@ function drawTrack(){
   ctx.strokeStyle = colors.track; ctx.lineWidth = 2.5; ctx.lineJoin = 'round'; ctx.globalAlpha = .85; ctx.stroke(); ctx.globalAlpha = 1;
 }
 function cross(x, y, k){ seg(x - k, y - k, x + k, y + k); seg(x + k, y - k, x - k, y + k); }
+const PAL = [['gelb', 'Gelb', '#F0B400'], ['rot', 'Rot', '#D3263A'], ['weiss', 'Weiß', '#FFFFFF'], ['blau', 'Blau', '#1E6FD9'], ['gruen', 'Grün', '#1F9D55'], ['orange', 'Orange', '#F07800'], ['violett', 'Violett', '#7B3FC4'], ['schwarz', 'Schwarz', '#1B1B1B']];
+const palHex = k => (PAL.find(p => p[0] === k) || [])[2];
+const EN_COL = { red:'rot', white:'weiss', blue:'blau', green:'gruen', yellow:'gelb', orange:'orange', black:'schwarz', purple:'violett', violet:'violett' };
 const SYMS = [['x', 'Kreuz'], ['o', 'Kreis'], ['tri', 'Dreieck'], ['sq', 'Quadrat'], ['flag', 'Fahne'], ['star', 'Stern'], ['dot', 'Punkt']];
 function symPath(sym, x, y, k){
   ctx.beginPath();
@@ -1556,20 +1575,21 @@ function symPath(sym, x, y, k){
   else if (sym === 'star') { for (let i = 0; i < 10; i++) { const r = i % 2 ? k * .48 : k * 1.15, a = -Math.PI / 2 + i * Math.PI / 5; i ? ctx.lineTo(x + r * Math.cos(a), y + r * Math.sin(a)) : ctx.moveTo(x + r * Math.cos(a), y + r * Math.sin(a)); } ctx.closePath(); }
   else if (sym === 'flag') { ctx.moveTo(x - k * .55, y - k * 1.2); ctx.lineTo(x + k * .95, y - k * .7); ctx.lineTo(x - k * .55, y - k * .15); ctx.closePath(); }
 }
-function drawSymbol(sym, x, y, k, strong){
+function drawSymbol(sym, x, y, k, strong, fill){
+  const fc = fill || colors.target, oc = fill === '#1B1B1B' ? '#FFFFFF' : colors['target-ink'];
   ctx.lineCap = 'round'; ctx.lineJoin = 'round';
   if (!sym || sym === 'x') {
-    ctx.strokeStyle = colors['target-ink']; ctx.lineWidth = strong ? 8.5 : 6; cross(x, y, k);
-    ctx.strokeStyle = colors.target; ctx.lineWidth = strong ? 5 : 3.2; cross(x, y, k);
+    ctx.strokeStyle = oc; ctx.lineWidth = strong ? 8.5 : 6; cross(x, y, k);
+    ctx.strokeStyle = fc; ctx.lineWidth = strong ? 5 : 3.2; cross(x, y, k);
   } else if (sym === 'o') {
     ctx.beginPath(); ctx.arc(x, y, k, 0, 2 * Math.PI);
-    ctx.strokeStyle = colors['target-ink']; ctx.lineWidth = strong ? 7.5 : 5.5; ctx.stroke();
-    ctx.strokeStyle = colors.target; ctx.lineWidth = strong ? 4 : 3; ctx.stroke();
-    dot(x, y, 2.5, colors['target-ink']);
+    ctx.strokeStyle = oc; ctx.lineWidth = strong ? 7.5 : 5.5; ctx.stroke();
+    ctx.strokeStyle = fc; ctx.lineWidth = strong ? 4 : 3; ctx.stroke();
+    dot(x, y, 2.5, oc);
   } else {
-    if (sym === 'flag') { ctx.strokeStyle = colors['target-ink']; ctx.lineWidth = 2.5; seg(x - k * .55, y + k, x - k * .55, y - k * 1.2); }
-    symPath(sym, x, y, k); ctx.fillStyle = colors.target; ctx.fill();
-    ctx.strokeStyle = colors['target-ink']; ctx.lineWidth = strong ? 2.5 : 2; ctx.stroke();
+    if (sym === 'flag') { ctx.strokeStyle = oc; ctx.lineWidth = 2.5; seg(x - k * .55, y + k, x - k * .55, y - k * 1.2); }
+    symPath(sym, x, y, k); ctx.fillStyle = fc; ctx.fill();
+    ctx.strokeStyle = oc; ctx.lineWidth = strong ? 2.5 : 2; ctx.stroke();
   }
   ctx.lineCap = 'butt';
 }
@@ -1603,21 +1623,22 @@ function drawTargets(){
     if (!on) {
       if (layer === 'anflug') continue;
       ctx.globalAlpha = task && !task.targets.includes(t.id) ? .4 : .85;
-      drawSymbol(t.sym, x, y, 7, false);
+      drawSymbol(t.sym, x, y, 7, false, palHex(t.color));
       { const top = targetTitle(t);
         label(top, x + 12, y - 1, { size:12, weight:700 });
-        if (t.locked) { ctx.font = '700 12px ' + FONT_NUM; drawLock(x + 14 + ctx.measureText(top).width, y - 1); }
-        label(code44(t.E, t.N), x + 12, y + 12, { size:11, color:colors['ink-2'] }); }
+        if (t.locked) { ctx.font = '700 ' + Math.round(12 * (S.settings.mapFont || 1)) + 'px ' + FONT_NUM; drawLock(x + 14 + ctx.measureText(top).width, y - 1); }
+        label(code44(t.E, t.N), x + 12, y + 12 * (S.settings.mapFont || 1), { size:11, color:colors['ink-2'] }); }
       ctx.globalAlpha = 1; continue;
     }
-    for (const r of t.radii || []) {
-      const rp = r * view.s; if (rp < 3) continue;
+    (t.radii || []).forEach((r, i) => {
+      const rp = r * view.s; if (rp < 3) return;
+      const rc = palHex((t.ringCol || [])[i]), base = palHex(t.color) || colors.target;
       ctx.beginPath(); ctx.arc(x, y, rp, 0, 2 * Math.PI);
-      if (on) { ctx.save(); ctx.globalAlpha = .1; ctx.fillStyle = colors.target; ctx.fill(); ctx.restore(); }
-      ctx.strokeStyle = on ? colors.target : colors['ink-2']; ctx.lineWidth = on ? 2.5 : 1.5;
-      ctx.setLineDash(on ? [] : [6, 5]); ctx.stroke(); ctx.setLineDash([]);
-      if (rp > 26) label(fmtR(r), x + rp * .707 + 3, y - rp * .707 - 3, { size:12, color:colors['ink-2'] });
-    }
+      if (on && i === 0) { ctx.save(); ctx.globalAlpha = .1; ctx.fillStyle = rc || base; ctx.fill(); ctx.restore(); }
+      ctx.strokeStyle = rc || (on ? base : colors['ink-2']); ctx.lineWidth = on ? 2.5 : 1.5;
+      ctx.setLineDash(on || rc ? [] : [6, 5]); ctx.stroke(); ctx.setLineDash([]);
+      if (rp > 26) label(fmtR(r), x + rp * .707 + 3, y - rp * .707 - 3, { size:12, color:rc && rc !== '#FFFFFF' ? rc : colors['ink-2'] });
+    });
     if (mmaOf[t.id]) {
       const rp = mmaOf[t.id] * view.s;
       if (rp > 4) { ctx.beginPath(); ctx.arc(x, y, rp, 0, 2 * Math.PI); ctx.strokeStyle = colors.ink; ctx.lineWidth = 1.5; ctx.setLineDash([2, 4]); ctx.stroke(); ctx.setLineDash([]);
@@ -1635,11 +1656,11 @@ function drawTargets(){
     }
     if (mpad && mpad.id === t.id) { ctx.beginPath(); ctx.arc(x, y, 22, 0, 2 * Math.PI); ctx.strokeStyle = colors.ink; ctx.lineWidth = 2; ctx.setLineDash([4, 4]); ctx.stroke(); ctx.setLineDash([]); }
     const k = on ? 12 : 9;
-    drawSymbol(t.sym, x, y, k, on);
+    drawSymbol(t.sym, x, y, k, on, palHex(t.color));
     { const top = targetTitle(t);
       label(top, x + k + 7, y - 2, { size:on ? 15 : 13, weight:700 });
-      if (t.locked) { ctx.font = '700 ' + (on ? 15 : 13) + 'px ' + FONT_NUM; drawLock(x + k + 10 + ctx.measureText(top).width, y - 2); }
-      label(code44(t.E, t.N), x + k + 7, y + 13, { size:12, color:colors['ink-2'] }); }
+      if (t.locked) { ctx.font = '700 ' + Math.round((on ? 15 : 13) * (S.settings.mapFont || 1)) + 'px ' + FONT_NUM; drawLock(x + k + 10 + ctx.measureText(top).width, y - 2); }
+      label(code44(t.E, t.N), x + k + 7, y + 14 * (S.settings.mapFont || 1), { size:12, color:colors['ink-2'] }); }
     ctx.globalAlpha = 1;
   }
 }
@@ -1901,6 +1922,23 @@ function taskHelp(task, m, prof){
   }
   return null;
 }
+function drawFan(){
+  if (!pos) return;
+  const st = S.settings;
+  let pts = frame.prof.filter(r => r.alt >= st.minAltFt && r.alt <= st.maxAltFt && Math.hypot(r.u, r.v) >= .3).sort((a, b) => a.alt - b.alt);
+  if (!pts.length) return;
+  if (pts.length > 10) { const k = Math.ceil(pts.length / 10); pts = pts.filter((_, i) => i % k === 0 || i === pts.length - 1); }
+  const lo = pts[0].alt, span = Math.max(1, pts[pts.length - 1].alt - lo), [bx, by] = w2s(pos.E, pos.N);
+  for (const r of pts) {
+    const col = 'hsl(' + Math.round(215 - 185 * (r.alt - lo) / span) + ' 70% 42%)';
+    const [x1, y1] = w2s(pos.E + r.u * 900, pos.N + r.v * 900), [x2, y2] = w2s(pos.E + r.u * 1800, pos.N + r.v * 1800);
+    ctx.strokeStyle = col; ctx.lineWidth = 2; ctx.globalAlpha = .85; seg(bx, by, x2, y2); ctx.globalAlpha = 1;
+    dot(x1, y1, 3, col); dot(x2, y2, 4, col);
+    const onScr = (x, y) => x > 10 && x < W - 70 && y > 20 && y < H - 10;
+    const [lx, ly] = onScr(x2, y2) ? [x2, y2] : [x1, y1];
+    label(r.alt + ' ft', lx + 6, ly + 4, { size:11, weight:700, color:col });
+  }
+}
 function drawTaskHelp(){
   const task = activeTask(); if (!task || !pos) return;
   const th = frame.th, d = th && th.draw;
@@ -1924,18 +1962,7 @@ function drawTaskHelp(){
     ctx.lineWidth = 1.5; seg(rx, ry, px, py);
     if (d.limit) { ctx.beginPath(); ctx.arc(rx, ry, d.limit * view.s, 0, 2 * Math.PI); ctx.setLineDash([8, 6]); ctx.stroke(); ctx.setLineDash([]); }
   }
-  if (d && d.type === 'fan' && layer !== 'anflug') {
-    const st = S.settings;
-    const pts = frame.prof.filter(r => r.alt >= st.minAltFt && r.alt <= st.maxAltFt && Math.hypot(r.u, r.v) >= .3).sort((a, b) => a.alt - b.alt);
-    [900, 1800].forEach(sec => {
-      if (!pts.length) return;
-      ctx.beginPath(); pts.forEach((r, i) => { const [x, y] = w2s(pos.E + r.u * sec, pos.N + r.v * sec); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); });
-      ctx.strokeStyle = colors.track; ctx.lineWidth = sec === 1800 ? 2 : 1.2; ctx.globalAlpha = .8; ctx.stroke(); ctx.globalAlpha = 1;
-      pts.forEach(r => { const [x, y] = w2s(pos.E + r.u * sec, pos.N + r.v * sec); dot(x, y, sec === 1800 ? 3.5 : 2.5, colors.track); });
-    });
-    const step = Math.max(1, Math.ceil(pts.length / 6));
-    pts.forEach((r, i) => { if (i % step && i !== pts.length - 1) return; const [x, y] = w2s(pos.E + r.u * 1800, pos.N + r.v * 1800); label(String(r.alt), x + 6, y - 4, { size:11, color:colors.track }); });
-  }
+  if (d && d.type === 'fan' && layer !== 'anflug' && !S.settings.fanOn) drawFan();
   (task.marks || []).forEach((mk, i) => {
     const [x, y] = w2s(mk.E, mk.N);
     ctx.fillStyle = colors.ink; ctx.fillRect(x - 5, y - 5, 10, 10); ctx.strokeStyle = colors.panel; ctx.lineWidth = 2; ctx.strokeRect(x - 5, y - 5, 10, 10);
@@ -1959,9 +1986,23 @@ $('#th-btn').addEventListener('click', e => {
   const b = e.currentTarget, task = activeTask(); if (!task) return;
   if (b.dataset.act === 'go') { setActive(b.dataset.id); return; }
   if (!pos) return;
-  task.marks = task.marks || []; task.marks.push({ E:pos.E, N:pos.N, t:pos.t });
-  say('Marker ' + task.marks.length + ' gesetzt'); save(); updateHud(); requestDraw();
+  task.marks = task.marks || []; const lm = loggerFor(task, 'mark'); task.marks.push({ E:pos.E, N:pos.N, t:pos.t });
+  if (lm) { showLogger('Loggermarker ' + lm + ' setzen'); say('Marker ' + task.marks.length + ' gesetzt. Loggermarker ' + lm + ' setzen', true); }
+  else say('Marker ' + task.marks.length + ' gesetzt');
+  save(); updateHud(); requestDraw();
 });
+
+/* Logger-Erinnerung */
+function loggerFor(task, kind){
+  const note = task && task.note || '';
+  if (kind === 'goal') { const m = note.match(/LG\s*(\d+)/); return m ? m[1] : null; }
+  const m = note.match(/LM\s*(\d+(?:\s*,\s*\d+)*)/); if (!m) return null;
+  const list = m[1].split(',').map(x => x.trim()).filter(Boolean);
+  return list[Math.min((task.marks || []).length, list.length - 1)];
+}
+let lgTimer = null;
+function showLogger(txt){ setText('lg-text', txt); $('#lgbar').hidden = false; clearTimeout(lgTimer); lgTimer = setTimeout(() => { $('#lgbar').hidden = true; }, 30000); try { navigator.vibrate && navigator.vibrate([200, 100, 200]); } catch (e) {} }
+$('#lg-ok').addEventListener('click', () => { $('#lgbar').hidden = true; });
 
 /* Zieldeklaration */
 const hhmm = ms => { const d = new Date(ms); return pad(d.getHours(), 2) + ':' + pad(d.getMinutes(), 2); };
@@ -1983,7 +2024,7 @@ function openDecl(){
   const sel = $('#dc-target'); sel.innerHTML = '<option value="">Koordinate eingeben</option>';
   for (const t of S.targets) { const o = document.createElement('option'); o.value = t.id; o.textContent = t.name + '  ' + code44(t.E, t.N); sel.appendChild(o); }
   sel.value = S.activeId && S.targets.some(t => t.id === S.activeId) ? S.activeId : '';
-  pickDeclTarget(); $('#dc-alt').value = '';
+  pickDeclTarget(); $('#dc-alt').value = ''; declForce = false; setText('dc-warn', ''); $('#dc-ok').textContent = 'Deklaration festhalten';
   const ul = $('#dc-list'); ul.innerHTML = '';
   if (!(task.decl || []).length) ul.innerHTML = '<li class="empty">Noch keine Deklaration in diesem Task.</li>';
   for (const d of task.decl || []) { const li = document.createElement('li'); li.innerHTML = '<div class="meta"><div class="nm"></div><div class="sub"></div></div>'; li.querySelector('.nm').textContent = d.name; li.querySelector('.sub').textContent = d.code + (d.alt != null ? '   ' + d.alt + ' ft' : '') + '   ' + hhmm(d.t); ul.appendChild(li); }
@@ -1995,18 +2036,29 @@ function pickDeclTarget(){
   $('#dc-coord').value = declExact ? declExact.code : ''; declCard();
 }
 $('#dc-target').addEventListener('change', pickDeclTarget);
-$('#dc-coord').addEventListener('input', declCard);
-$('#dc-alt').addEventListener('input', declCard);
+let declForce = false;
+const declReset = () => { declForce = false; setText('dc-warn', ''); $('#dc-ok').textContent = 'Deklaration festhalten'; };
+$('#dc-coord').addEventListener('input', () => { declReset(); declCard(); });
+$('#dc-alt').addEventListener('input', () => { declReset(); declCard(); });
+$('#dc-target').addEventListener('change', declReset);
 $('#th-decl').addEventListener('click', openDecl);
 $('#dc-ok').addEventListener('click', () => {
   const task = activeTask(), c = declCoord(); if (!task) return;
   if (!c) { declCard(); $('#dc-coord').focus(); return; }
+  const altIn = numOrNull($('#dc-alt').value), warn = [];
+  if (pos && task.limit) { const d = Math.hypot(c.E - pos.E, c.N - pos.N); if (d < task.limit) warn.push('Das Ziel liegt nur ' + fmtDist(d) + ' vom Deklarationspunkt, verlangt sind mindestens ' + fmtDist(task.limit) + '.'); }
+  if (S.flight.minIlp && S.track.length) { const d = Math.hypot(c.E - S.track[0][0], c.N - S.track[0][1]); if (d < S.flight.minIlp) warn.push('Das Ziel liegt nur ' + fmtDist(d) + ' vom Startpunkt, verlangt sind mindestens ' + fmtDist(S.flight.minIlp) + '.'); }
+  if (task.minAlt) { if (altIn == null) warn.push('Die Höhe fehlt, verlangt sind mindestens ' + task.minAlt + ' ft.'); else if (altIn < task.minAlt) warn.push('Die Höhe liegt unter den verlangten ' + task.minAlt + ' ft.'); }
+  if (task.maxDecl && (task.decl || []).length >= task.maxDecl) warn.push('Es gibt schon ' + task.decl.length + ' Deklarationen, erlaubt sind ' + task.maxDecl + '.');
+  if (warn.length && !declForce) { setText('dc-warn', warn.join(' ')); $('#dc-ok').textContent = 'Trotzdem festhalten'; declForce = true; return; }
   let tid = c.tid;
   if (!tid) { const t = { id:uid(), name:'T' + task.nr + ' Ziel', E:c.E, N:c.N, radii:[] }; S.targets.push(t); tid = t.id; }
   const t = S.targets.find(x => x.id === tid), alt = numOrNull($('#dc-alt').value);
   task.decl = task.decl || []; task.decl.push({ tid, name:t.name, code:code44(t.E, t.N), E:t.E, N:t.N, alt: alt != null ? Math.round(alt) : null, t:Date.now() });
   if (!task.targets.includes(tid)) task.targets.push(tid);
-  S.activeId = tid; invalidatePlan(); save(); closeSheets(); say('Ziel deklariert'); requestDraw(); updateHud();
+  S.activeId = tid; invalidatePlan(); save(); closeSheets(); requestDraw(); updateHud();
+  const lg = loggerFor(task, 'goal');
+  if (lg) { showLogger('Loggergoal ' + lg + ' setzen: ' + code44(t.E, t.N) + (alt != null ? ', ' + Math.round(alt) + ' ft' : '')); say('Ziel deklariert. Loggergoal ' + lg + ' setzen', true); } else say('Ziel deklariert');
 });
 
 /* ---------- Ansagen ---------- */
@@ -2055,7 +2107,7 @@ function announce(t, d, p, dr){
     if (p.ground) countdown('sink' + t.id, c.tD, [60, 30, 5], mk => mk === 5 ? 'Jetzt sinken' : mk === 60 ? 'Sinken in einer Minute' : 'Sinken in 30 Sekunden');
     if (c.legs.length > 1) countdown('sw' + t.id, c.legs[0].until, [30, 5], mk => mk === 5 ? 'Jetzt auf ' + c.legs[1].h + ' Fuß' : 'In 30 Sekunden auf ' + c.legs[1].h + ' Fuß');
   }
-  countdown('drop' + t.id, dr && dr.time != null ? dr.time : null, [30, 10, 3], mk => mk === 3 ? 'Abwurf jetzt' : 'Abwurf in ' + mk + ' Sekunden');
+  countdown('drop' + t.id, dr && dr.time != null ? dr.time : null, [30, 10, 3], mk => { if (mk !== 3) return 'Abwurf in ' + mk + ' Sekunden'; const lm = loggerFor(activeTask(), 'mark'); if (lm) showLogger('Abwurf: Loggermarker ' + lm + ' setzen'); return 'Abwurf jetzt' + (lm ? ', Loggermarker ' + lm : ''); });
   const r = (t.radii || []).find(x => d <= x) || null;
   if (lastCircle.id !== t.id) lastCircle = { id:t.id, r };
   else if (r !== lastCircle.r) { if (r && (lastCircle.r == null || r < lastCircle.r)) say('Im ' + r + ' Meter Kreis'); lastCircle.r = r; }
@@ -2330,7 +2382,7 @@ function drawReplay(){
   ctx.globalAlpha = 1; ctx.lineCap = 'butt';
   for (const t of f.targets || []) {
     const [x, y] = w2s(t.E, t.N);
-    drawSymbol(t.sym, x, y, 7, false);
+    drawSymbol(t.sym, x, y, 7, false, palHex(t.color));
     label(t.name, x + 12, y + 4, { size:12 });
   }
   for (const k of f.tasks || []) (k.marks || []).forEach((mk, i) => { const [x, y] = w2s(mk.E, mk.N); ctx.fillStyle = colors.ink; ctx.fillRect(x - 5, y - 5, 10, 10); label('T' + k.nr + ' M' + (i + 1), x + 8, y - 6, { size:11, weight:700 }); });
@@ -2646,6 +2698,7 @@ function parseTaskSheet(text, launchHint){
       }
       if (found) continue;
     }
+    { const il = line.match(/ILP[^0-9]{0,20}(\d+(?:[.,]\d+)?)\s*(km|m)\b/i); if (il && !cur) res.minIlp = Math.round(parseFloat(il[1].replace(',', '.')) * (il[2].toLowerCase() === 'km' ? 1000 : 1)); }
     if (tm && /launch|start|take.?off|abfahrt/i.test(line) && !type) { res.launchFrom = hhmmOf(tm[1]); res.launchTo = hhmmOf(tm[2]); continue; }
     if (/\b(PZ\s*\d*|prohibited|sperrgebiet|red\s*zone|no.?fly)/i.test(line)) inPz = true;
     if (head && type) { cur = { nr:+head[1], type, goals:[], from:'', to:'', mma:null, dir:null, limit:null, note:'' }; res.tasks.push(cur); inPz = false; inWind = false; }
@@ -2663,6 +2716,9 @@ function parseTaskSheet(text, launchHint){
     const lm = line.match(/logger\s*marker\s*:?\s*#?(\d+(?:\s*,\s*\d+)*)\s*$/i); if (lm) cur.note = (cur.note ? cur.note + ', ' : '') + 'LM ' + lm[1].replace(/\s/g, '');
     const lg = line.match(/logger\s*goal\s*:?\s*#?(\d+)\s*$/i); if (lg) cur.note = (cur.note ? cur.note + ', ' : '') + 'LG ' + lg[1];
     const mma = line.match(/\bMMA\s*[:=]?\s*R?\s*(\d+)/i); if (mma) cur.mma = +mma[1];
+    const mal = line.match(/(?:at\s*least|mindestens|min\.?)\s*(\d{3,5})\s*ft/i); if (mal) cur.minAlt = +mal[1];
+    const mdc = line.match(/max\.?\s*(\d+)\s*(?:valid\s*)?declarations?/i); if (mdc) cur.maxDecl = +mdc[1];
+    const mcl = line.match(/marker\s*colou?r\s*[:\-]?\s*(red|white|blue|green|yellow|orange|black|purple|violet)/i); if (mcl && !cur.mcolor) cur.mcolor = mcl[1].toLowerCase();
     const dir = line.match(/(?:direction|richtung|set\s*angle|winkel)\s*[:=]?\s*(\d{1,3})\s*°?/i); if (dir) cur.dir = +dir[1] % 360;
     const lim = line.match(/(?:min(?:imum)?|max(?:imum)?)\.?\s*(?:distance|distanz|dist\.?)?\s*[:=]?\s*(\d+(?:[.,]\d+)?)\s*(km|m)\b/i);
     if (lim && !/mma/i.test(line) && !inWind) cur.limit = Math.round(parseFloat(lim[1].replace(',', '.')) * (lim[2].toLowerCase() === 'km' ? 1000 : 1));
@@ -2731,11 +2787,13 @@ function normTs(r){
   const tme = v => /^\d{1,2}[:.]\d{2}$/.test(s(v).trim()) ? hhmmOf(s(v).trim()) : '';
   return {
     windInfo: s(r && r.windInfo),
+    minIlp: n(r && r.minIlp),
     launchFrom: tme(r && r.launchFrom), launchTo: tme(r && r.launchTo),
     tasks: (Array.isArray(r && r.tasks) ? r.tasks : []).map((k, i) => ({
       nr: n(k.nr) || i + 1, type: TT_CODES.includes(s(k.type).toUpperCase()) ? s(k.type).toUpperCase() : '---',
       goals: (Array.isArray(k.goals) ? k.goals : []).filter(g => g && s(g.code)).map(g => ({ name:s(g.name).slice(0, 30), code:s(g.code).replace(/\s/g, ''), altFt:n(g.altFt) })),
-      from: tme(k.from), to: tme(k.to), mma:n(k.mma), dir:n(k.dir), limit:n(k.limit), note:s(k.note).slice(0, 100) })),
+      from: tme(k.from), to: tme(k.to), mma:n(k.mma), dir:n(k.dir), limit:n(k.limit), note:s(k.note).slice(0, 100),
+      minAlt:n(k.minAlt), maxDecl:n(k.maxDecl), mcolor:s(k.mcolor).toLowerCase() })),
     wind: (Array.isArray(r && r.wind) ? r.wind : []).map(w => ({ range: !!(w && w.range), alt: /^(sfc|surface|ground|gnd|boden)$/i.test(s(w.alt)) ? 'SFC' : n(w.alt), from:n(w.from), speed:n(w.speed), unit: ['kt', 'kmh', 'ms'].includes(s(w.unit)) ? s(w.unit) : 'kt' }))
       .filter(w => w.alt != null && w.from != null && w.speed != null && w.from <= 360),
     pz: (Array.isArray(r && r.pz) ? r.pz : []).map((z, i) => ({ name:s(z.name) || 'PZ ' + (i + 1), type: z.type === 'poly' ? 'poly' : 'circle',
@@ -2777,6 +2835,7 @@ function tsPrompt(text, nImg){
     '{"launchFrom":"HH:MM","launchTo":"HH:MM","wind":[{"alt":"SFC","from":220,"speed":5,"unit":"kt"},{"alt":1000,"from":240,"speed":8,"unit":"kt"}],"tasks":[{"nr":1,"type":"PDG","goals":[{"name":"","code":"1234/5678","altFt":null}],"from":"HH:MM","to":"HH:MM","mma":null,"dir":null,"limit":null,"note":""}],"pz":[{"name":"PZ 1","type":"circle","center":"1234/5678","r":500,"pts":[],"ceil":null}]}\n' +
     'Regeln: type ist einer von ' + TT_CODES.join(', ') + ' oder "---". Koordinaten genau so übernehmen wie gedruckt (4/4, 5/5 oder 6/7 mit Schrägstrich). launchFrom/launchTo = Startfenster. from/to = Wertungszeitraum (scoring period) des Tasks. ' +
     'mma in Metern. dir = vorgegebene Richtung in Grad (bei Angle). limit = Mindest- oder Maximaldistanz in Metern. pz = Sperrgebiete: Kreis mit center und r in Metern oder Fläche (type "poly") mit pts; ceil = Höhengrenze in ft. ' +
+    'Zusätzlich je Task, falls angegeben: minAlt = Mindesthöhe deklarierter Ziele in ft, maxDecl = erlaubte Anzahl Deklarationen, mcolor = Markerfarbe auf Englisch (red, white …, nicht bei any). Im Kopf: minIlp = Mindestabstand Startpunkt zu Zielen in Metern. ' +
     'goals: altFt = Geländehöhe des Ziels in ft (z. B. "4492/0389 · 955 ft" → altFt 955), name = Zielbuchstabe mit Nummer wie gedruckt (z. B. "A 212"). from leer lassen, wenn nur das Ende der Wertung angegeben ist ("Scoring period ends at 07:30" → to "07:30"). Loggermarker oder Loggergoal kurz in note ("LM 1"). ' +
     'wind = Winddaten aus dem Briefing je Höhe; GND bedeutet "SFC"; gibt es mehrere Vorhersagezeiten, die Werte für etwa 30 Minuten nach Beginn des Startfensters zwischen den Spalten interpolieren, sonst die erste Spalte;  alt in ft wie gedruckt oder "SFC" für Boden, from = Richtung aus der der Wind kommt in Grad, speed und unit genau wie gedruckt (kt, kmh oder ms). note = kurze wichtige Zusatzinfo, höchstens 100 Zeichen. Unbekanntes als "" oder null lassen, nichts erfinden.\n\n' +
     (nImg ? 'Die beigefügten Bilder zeigen Task Sheet und/oder Wetterbericht.\n' : '') + (text ? 'Task Sheet und Wetterbericht als Text:\n<<<\n' + text.slice(0, 30000) + '\n>>>' : '');
@@ -2805,7 +2864,7 @@ function renderTsPreview(){
   if (r.launchFrom) add('ti-row', 'Startfenster ' + r.launchFrom + (r.launchTo ? '–' + r.launchTo : ''));
   for (const k of r.tasks) {
     const g = k.goals.map(x => { const c = parseCoord(x.code); if (!c) bad.push(x.code); return x.code + (c ? '' : ' (?)') + (x.altFt ? ' Boden ' + x.altFt + ' ft' : ''); }).join(', ');
-    add('ti-row', 'T' + k.nr + ' ' + k.type + (k.from ? '  ' + k.from + '–' + k.to : k.to ? '  bis ' + k.to : '') + (k.mma ? '  MMA ' + k.mma + ' m' : '') + (k.dir != null ? '  Richtung ' + k.dir + '°' : '') + (k.limit ? '  Distanz ' + fmtDist(k.limit) : '') + (g ? '\nZiele: ' + g : '') + (k.note ? '\n' + k.note : ''));
+    add('ti-row', 'T' + k.nr + ' ' + k.type + (k.mcolor ? '  Marker ' + (PAL.find(p => p[0] === EN_COL[k.mcolor]) || ['', k.mcolor])[1] : '') + (k.minAlt ? '  min. ' + k.minAlt + ' ft' : '') + (k.maxDecl ? '  max. ' + k.maxDecl + ' Dekl.' : '') + (k.from ? '  ' + k.from + '–' + k.to : k.to ? '  bis ' + k.to : '') + (k.mma ? '  MMA ' + k.mma + ' m' : '') + (k.dir != null ? '  Richtung ' + k.dir + '°' : '') + (k.limit ? '  Distanz ' + fmtDist(k.limit) : '') + (g ? '\nZiele: ' + g : '') + (k.note ? '\n' + k.note : ''));
   }
   if (r.wind.length) add('ti-row wind', 'Wind aus dem Briefing' + (r.windInfo ? '\n' + r.windInfo : '') + '\n' + r.wind.map(w => (w.alt === 'SFC' ? 'Boden' : w.alt + ' ft') + ': aus ' + pad(Math.round(w.from), 3) + '°, ' + w.speed + ' ' + ({ kt:'kt', kmh:'km/h', ms:'m/s' })[w.unit] + (w.unit === 'kmh' ? '' : ' = ' + Math.round(windKmh(w)) + ' km/h') + (w.range ? ' (Mittel aus Bereich)' : '')).join('\n'));
   for (const z of r.pz) add('ti-row pz', z.name + ': ' + (z.type === 'poly' ? z.pts.length + ' Eckpunkte' : z.center + ', Radius ' + fmtR(z.r)) + (z.ceil ? ', bis ' + z.ceil + ' ft' : ''));
@@ -2829,6 +2888,7 @@ function applyTaskSheet(){
   }
   if ($('#ti-replace').checked) { S.tasks = []; S.activeTaskId = null; }
   if (r.launchFrom) S.flight = { launchFrom:r.launchFrom, launchTo:r.launchTo };
+  if (r.minIlp) S.flight.minIlp = r.minIlp;
   let nT = 0;
   for (const k of r.tasks) {
     const ids = [];
@@ -2836,11 +2896,11 @@ function applyTaskSheet(){
       const c = parseCoord(g.code); if (!c) return;
       const ex = S.targets.find(t => Math.hypot(t.E - c.E, t.N - c.N) < 15);
       if (ex) { if (g.altFt != null && ex.elevFt == null) ex.elevFt = g.altFt; ids.push(ex.id); return; }
-      const t = { id:uid(), name: g.name || 'T' + k.nr + (k.goals.length > 1 ? ' Z' + (i + 1) : ' Ziel'), E:c.E, N:c.N, radii:[], elevFt:g.altFt, locked:lock, sym:'x' };
+      const t = { id:uid(), name: g.name || 'T' + k.nr + (k.goals.length > 1 ? ' Z' + (i + 1) : ' Ziel'), E:c.E, N:c.N, radii:[], elevFt:g.altFt, locked:lock, sym:'x', color: EN_COL[k.mcolor] || '' };
       S.targets.push(t); ids.push(t.id); nT++;
     });
     const old = S.tasks.find(x => x.nr === k.nr);
-    const task = { id: old ? old.id : uid(), nr:k.nr, type:k.type, targets:ids, from:k.from, to:k.to, mma:k.mma, note:k.note, dir:k.dir, limit:k.limit, marks: old ? old.marks || [] : [], decl: old ? old.decl || [] : [] };
+    const task = { id: old ? old.id : uid(), nr:k.nr, type:k.type, targets:ids, from:k.from, to:k.to, mma:k.mma, note:k.note, dir:k.dir, limit:k.limit, minAlt:k.minAlt, maxDecl:k.maxDecl, mcolor:k.mcolor, marks: old ? old.marks || [] : [], decl: old ? old.decl || [] : [] };
     if (old) Object.assign(old, task); else S.tasks.push(task);
   }
   let nP = 0;
@@ -3067,8 +3127,14 @@ function setActive(id){ S.activeId = id; invalidatePlan(); save(); if (view.foll
 })();
 function setText(id, v){ const el = document.getElementById(id); if (el.textContent !== v) el.textContent = v; }
 let lastAlert = '';
+function vario(){
+  if (!pos || pos.altFt == null) return null;
+  for (let i = fixes.length - 2; i >= 0; i--) { const f = fixes[i], dt = (pos.t - f.t) / 1000; if (dt >= 8) return f.alt == null ? null : (pos.altFt - f.alt) / dt * 60; }
+  return null;
+}
 function updateHud(){
   const t = activeTarget(), m = motion(), prof = windProfile(), task = activeTask();
+  { const vs = vario(); setText('altl', vs == null ? 'Höhe' : Math.abs(vs) < 50 ? 'Höhe, gleich' : (vs > 0 ? '▲ ' : '▼ ') + Math.round(Math.abs(vs) / 10) * 10 + ' ft/min'); }
   setText('altv', pos && pos.altFt != null ? Math.round(pos.altFt) + ' ft' : '—');
   setText('spdv', m ? (m.gs * 3.6).toFixed(1).replace('.', ',') : '—');
   updateAltCtl();
@@ -3299,7 +3365,8 @@ function openTargetForm(t, at){
   $('#tf-title').textContent = t ? 'Ziel bearbeiten' : 'Neues Ziel';
   $('#tf-name').value = t ? t.name : 'Ziel ' + (S.targets.length + 1);
   $('#tf-coord').value = exact ? exact.code : '';
-  $('#tf-radii').value = t ? (t.radii || []).join(', ') : '';
+  formRings = t ? (t.radii || []).map((r, i) => ({ r, c:(t.ringCol || [])[i] || '' })) : []; renderRings();
+  formCol = t && t.color || ''; renderColGrid();
   $('#tf-elev').value = t && t.elevFt != null ? t.elevFt : '';
   $('#tf-ga').checked = !!(t && t.ga);
   formSym = t && t.sym || 'x'; renderSymGrid();
@@ -3321,7 +3388,31 @@ function coordPreview(el, c, raw, hint){
 }
 function previewTarget(){ coordPreview($('#tf-prev'), currentCoord(), $('#tf-coord').value.trim(), '4/4, 5/5 oder 6/7, z. B. 1234/5678'); }
 $('#tf-coord').addEventListener('input', previewTarget);
-let formSym = 'x';
+let formSym = 'x', formRings = [], formCol = '';
+function renderRings(){
+  const box = $('#tf-rings'); box.innerHTML = '';
+  formRings.forEach((g, i) => {
+    const row = document.createElement('div'); row.className = 'ringrow';
+    const inp = document.createElement('input'); inp.className = 'num'; inp.inputMode = 'numeric'; inp.value = g.r; inp.placeholder = 'm'; inp.setAttribute('aria-label', 'Radius ' + (i + 1) + ' in Metern');
+    inp.addEventListener('input', () => { g.r = inp.value; });
+    const sel = document.createElement('select'); sel.setAttribute('aria-label', 'Farbe von Kreis ' + (i + 1));
+    sel.innerHTML = '<option value="">Standard</option>' + PAL.map(([k, n]) => '<option value="' + k + '">' + n + '</option>').join('');
+    sel.value = g.c || ''; sel.addEventListener('change', () => { g.c = sel.value; });
+    const del = document.createElement('button'); del.type = 'button'; del.textContent = '✕'; del.setAttribute('aria-label', 'Kreis entfernen');
+    del.addEventListener('click', () => { formRings.splice(i, 1); renderRings(); });
+    row.append(inp, sel, del); box.appendChild(row);
+  });
+  $('#tf-ring-add').hidden = formRings.length >= 8;
+}
+$('#tf-ring-add').addEventListener('click', () => { formRings.push({ r:'', c:'' }); renderRings(); const ins = document.querySelectorAll('#tf-rings input'); if (ins.length) ins[ins.length - 1].focus(); });
+function renderColGrid(){
+  const g = $('#tf-col'); g.innerHTML = '';
+  for (const [k, n, hex] of [['', 'Standard', null], ...PAL]) {
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'sw'; b.title = n; b.setAttribute('aria-label', n);
+    const sp = document.createElement('span'); sp.style.background = hex || 'var(--target)'; if (!hex) sp.style.borderStyle = 'dashed'; b.appendChild(sp);
+    b.setAttribute('aria-pressed', k === formCol); b.addEventListener('click', () => { formCol = k; renderColGrid(); }); g.appendChild(b);
+  }
+}
 function renderSymGrid(){
   const g = $('#tf-sym'); g.innerHTML = '';
   for (const [k, n] of SYMS) {
@@ -3342,7 +3433,9 @@ $('#tf-here').addEventListener('click', () => {
 $('#tf-save').addEventListener('click', () => {
   const c = currentCoord();
   if (!c) { previewTarget(); $('#tf-coord').focus(); return; }
-  const data = { name:$('#tf-name').value.trim() || 'Ziel', E:c.E, N:c.N, radii:parseRadii($('#tf-radii').value), elevFt:numOrNull($('#tf-elev').value), ga:$('#tf-ga').checked, sym:formSym, locked:$('#tf-lock').checked };
+  const data = { name:$('#tf-name').value.trim() || 'Ziel', E:c.E, N:c.N, radii:[], ringCol:[], color:formCol, elevFt:numOrNull($('#tf-elev').value), ga:$('#tf-ga').checked, sym:formSym, locked:$('#tf-lock').checked };
+  const rings = formRings.map(x => ({ r:numOrNull(x.r), c:x.c })).filter(x => x.r && x.r > 0).sort((a, b) => a.r - b.r).slice(0, 8);
+  data.radii = rings.map(x => Math.round(x.r)); data.ringCol = rings.map(x => x.c || null);
   const gf = numOrNull($('#tf-gwfrom').value), gk = numOrNull($('#tf-gwkmh').value);
   data.gw = gf != null && gk != null ? { from:((gf % 360) + 360) % 360, kmh:Math.max(0, gk) } : null;
   const old = editId ? S.targets.find(x => x.id === editId) : null;
@@ -3647,6 +3740,7 @@ function fillSettings(){
   $('#st-zone').value = st.zone; $('#st-zoneauto').value = st.zoneAuto ? '1' : '0';
   $('#st-ref').value = Math.round(st.refE) + '/' + Math.round(st.refN);
   $('#st-digE').value = String(st.digE || 4); $('#st-digN').value = String(st.digN || 4); digPreview();
+  $('#st-font').value = String(st.mapFont || 1);
   $('#st-auto').value = st.autoApproachM; $('#st-sinkonly').checked = !!st.sinkOnly;
   $('#lim-up').value = fpmToMs(st.climbFpm); $('#lim-down').value = fpmToMs(st.sinkFpm); $('#lim-min').value = st.minAltFt; $('#lim-max').value = st.maxAltFt; $('#lim-tol').value = st.tolM; $('#lim-low').value = st.lowFt; $('#lim-age').value = st.windMaxAge; $('#lim-final').value = st.minFinalM;
   $('#dr-fall').value = String(st.fallMs).replace('.', ','); $('#dr-ground').value = st.groundFt; $('#st-big').checked = !!st.big;
@@ -3662,6 +3756,7 @@ function digPreview(){
   setText('st-digprev', 'So werden Koordinaten angezeigt, z. B. ' + code44(E, N) + '. Eingaben erkennt die App unabhängig davon an der Stellenzahl.');
 }
 ['digE', 'digN'].forEach(k => $('#st-' + k).addEventListener('change', e => { S.settings[k] = +e.target.value; save(); digPreview(); requestDraw(); updateHud(); }));
+$('#st-font').addEventListener('change', e => { S.settings.mapFont = +e.target.value; save(); requestDraw(); });
 $('#st-sinkonly').addEventListener('change', e => { S.settings.sinkOnly = e.target.checked; save(); invalidatePlan(); updateHud(); requestDraw(); });
 $('#st-big').addEventListener('change', e => { S.settings.big = e.target.checked; save(); applyBig(); });
 function applyBig(){ document.documentElement.classList.toggle('big', !!S.settings.big); requestDraw(); }
@@ -3752,6 +3847,9 @@ function installNote(){
 $('#upd-reload').addEventListener('click', () => location.reload());
 if (navigator.serviceWorker) navigator.serviceWorker.addEventListener('message', e => { if (e.data === 'wf-updated') $('#updbar').hidden = false; });
 
+function setFanUi(){ $('#btn-fan').setAttribute('aria-pressed', !!S.settings.fanOn); }
+$('#btn-fan').addEventListener('click', () => { S.settings.fanOn = !S.settings.fanOn; setFanUi(); save(); requestDraw(); });
+setFanUi();
 setTrackUi();
 applyMode();
 if (S.firstRun) openSheet('#sheet-welcome');
