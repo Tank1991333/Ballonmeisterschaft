@@ -235,7 +235,9 @@ details.more summary{cursor:pointer;color:var(--ink-2);font-size:.9rem;margin:.4
 .hint .ghost{background:transparent;color:var(--panel);border:1.5px solid var(--panel)}
 .ck-ic{width:1.7rem;height:1.7rem;border-radius:50%;display:grid;place-items:center;font-weight:700;color:#fff;background:var(--warn);flex:0 0 auto}
 .ck-ic.ok{background:var(--ok)}
-.tiles .wide{grid-column:1/-1;border-left:5px solid var(--ok)}
+.tiles .wide{grid-column:1/-1}
+.mhead{margin:1rem 0 .45rem !important;font-size:.85rem !important;text-transform:uppercase;letter-spacing:.04em}
+.sheet h2+.mhead{margin-top:0 !important}
 .steps{list-style:none;padding:0;margin:.3rem 0 .6rem}
 .steps li{display:grid;grid-template-columns:5.6rem 1fr;gap:.6rem;padding:.55rem 0;border-bottom:1px solid var(--panel-edge);align-items:baseline}
 .st-t{font-family:var(--num);font-weight:700;font-size:1.15rem;font-variant-numeric:tabular-nums}
@@ -327,12 +329,6 @@ details.more summary{cursor:pointer;color:var(--ink-2);font-size:.9rem;margin:.4
     <div class="cursorbar" id="cursorbar" hidden><div class="cb-t"><span id="cb-code"></span><small id="cb-info"></small></div><button class="btn small" id="cb-add">Ziel hier</button></div>
   </div>
   <div class="rail">
-    <button class="rbtn" id="tool-add" aria-pressed="false" aria-label="Ziel auf der Karte setzen" title="Ziel auf der Karte setzen">
-      <svg viewBox="0 0 24 24"><path d="M5 5l9 9M14 5l-9 9"/><path d="M19 14v7M15.5 17.5h7"/></svg>
-    </button>
-    <button class="rbtn" id="tool-measure" aria-pressed="false" aria-label="Distanz messen" title="Distanz messen">
-      <svg viewBox="0 0 24 24"><path d="M3 17L17 3l4 4L7 21z"/><path d="M7 13l2 2M10 10l2 2M13 7l2 2"/></svg>
-    </button>
     <button class="rbtn" id="btn-follow" aria-pressed="true" aria-label="Ballon zentrieren" title="Ballon zentrieren">
       <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="1.5"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
     </button>
@@ -419,18 +415,27 @@ details.more summary{cursor:pointer;color:var(--ink-2);font-size:.9rem;margin:.4
 <div class="back" id="sheet-menu">
   <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="mn-title">
     <h2 id="mn-title">Menü</h2>
+    <h3 class="mhead">Vor der Fahrt</h3>
     <div class="tiles">
-      <button data-open="check" class="wide"><b>Startcheck</b><small id="mt-check"></small></button>
-      <button data-open="tasks"><b>Task Sheet</b><small id="mt-tasks"></small></button>
+      <button data-open="brief" class="wide"><b>Briefing importieren</b><small id="mt-brief"></small></button>
       <button data-open="list"><b>Ziele</b><small id="mt-list"></small></button>
-      <button data-open="wind"><b>Wind</b><small id="mt-wind"></small></button>
       <button data-open="pz"><b>Sperrgebiete</b><small id="mt-pz"></small></button>
       <button data-open="map"><b>Karte</b><small id="mt-map"></small></button>
-      <button data-open="crew"><b>Verfolger</b><small id="mt-crew"></small></button>
-      <button data-open="log"><b>Logbuch</b><small id="mt-log"></small></button>
-      <button data-open="settings"><b>Einstellungen</b><small id="mt-set"></small></button>
+      <button data-open="check"><b>Startcheck</b><small id="mt-check"></small></button>
     </div>
-    <p class="note" style="text-align:center;margin-top:.9rem">Version 2026-10-08.11</p>
+    <h3 class="mhead">In der Fahrt</h3>
+    <div class="tiles">
+      <button data-open="tasks"><b>Tasks</b><small id="mt-tasks"></small></button>
+      <button data-open="wind"><b>Wind</b><small id="mt-wind"></small></button>
+      <button data-open="crew" id="tile-crew" class="wide"><b>Verfolger</b><small id="mt-crew"></small></button>
+    </div>
+    <h3 class="mhead">Nach der Fahrt</h3>
+    <div class="tiles">
+      <button data-open="log"><b>Logbuch</b><small id="mt-log"></small></button>
+      <button data-open="reset"><b>Fahrt-Punkte löschen</b><small>Karte für die nächste Fahrt</small></button>
+    </div>
+    <button class="btn" data-open="settings" style="width:100%;margin-top:1rem">Einstellungen<small id="mt-set" style="display:none"></small></button>
+    <p class="note" style="text-align:center;margin-top:.9rem">Version 2026-10-09</p>
   </div>
 </div>
 
@@ -537,10 +542,7 @@ details.more summary{cursor:pointer;color:var(--ink-2);font-size:.9rem;margin:.4
       <button class="btn" id="tl-export" style="flex:1">Ziele als GPX</button>
     </div>
     <div class="row" style="align-items:center;margin-top:.4rem"><p class="note" id="tl-msg" style="margin:0"></p><button class="btn small" id="tl-undo" style="flex:0 0 auto" hidden>Rückgängig</button></div>
-    <p class="note">Import aus GPX oder CSV, z. B. von der Wettbewerbsleitung. Die CSV braucht je Zeile einen Namen und eine Koordinate als 4/4, 6/7 oder Breite und Länge. Ziele mit gleichem Namen werden aktualisiert. Tippe ein Ziel auf der Karte an, um es mit den Pfeilen zu verschieben.</p>
-    <h3>Nach der Fahrt</h3>
-    <button class="btn danger" id="tl-reset" style="width:100%">Fahrt-Punkte löschen</button>
-    <p class="note" id="tl-reset-note">Löscht alle nicht gesperrten Ziele, den Track, die Markierungen sowie Marker und Deklarationen der Tasks. Gesperrte Punkte, Sperrgebiete, Tasks und Einstellungen bleiben. Speichere die Fahrt vorher im Logbuch, wenn du sie behalten willst.</p>
+    <p class="note">GPX, KML oder CSV (Name und Koordinate je Zeile). Gleichnamige Ziele werden aktualisiert.</p>
     <div class="btns">
       <button class="btn" data-close>Schließen</button>
       <button class="btn primary" id="tl-new">Ziel per Koordinate</button>
@@ -709,6 +711,36 @@ details.more summary{cursor:pointer;color:var(--ink-2);font-size:.9rem;margin:.4
   </div>
 </div>
 
+<!-- Briefing -->
+<div class="back" id="sheet-brief">
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="br-title">
+    <h2 id="br-title">Briefing importieren</h2>
+    <p class="note" style="margin-top:0">Erst das Task Sheet, dann den Wetterbericht. PDF, Textdatei oder Foto.</p>
+    <div class="btns" style="flex-direction:column">
+      <button class="btn primary" id="br-ts">Task Sheet importieren</button>
+      <p class="note" id="br-ts-state" style="margin:0 0 .4rem"></p>
+      <button class="btn primary" id="br-wx">Wetterbericht importieren</button>
+      <p class="note" id="br-wx-state" style="margin:0"></p>
+    </div>
+    <p class="note">Vorher prüfen: Einstellungen → Gebiet, UTM-Zone und Bezugspunkt passend zum Wettbewerbsgebiet.</p>
+    <div class="btns"><button class="btn" data-close>Schließen</button></div>
+  </div>
+</div>
+
+<!-- Fahrt-Punkte löschen -->
+<div class="back" id="sheet-reset">
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="rs-title">
+    <h2 id="rs-title">Fahrt-Punkte löschen</h2>
+    <p class="note" style="margin-top:0">Löscht alle nicht gesperrten Ziele, den Track, die Markierungen sowie Marker und Deklarationen der Tasks. Gesperrte Punkte, Sperrgebiete, Tasks und Einstellungen bleiben.</p>
+    <p class="note" id="rs-info"></p>
+    <div class="btns" style="flex-direction:column">
+      <button class="btn" id="rs-log">Vorher im Logbuch speichern</button>
+      <button class="btn danger" id="rs-go">Fahrt-Punkte löschen</button>
+      <button class="btn" data-close>Abbrechen</button>
+    </div>
+  </div>
+</div>
+
 <!-- Startcheck -->
 <div class="back" id="sheet-check">
   <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="ck-title">
@@ -830,10 +862,8 @@ details.more summary{cursor:pointer;color:var(--ink-2);font-size:.9rem;margin:.4
 <div class="back" id="sheet-settings">
   <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="st-title">
     <h2 id="st-title">Einstellungen</h2>
-    <div class="field"><span>Positionsquelle</span>
-      <div class="seg"><button id="st-gps" aria-pressed="false">GPS</button><button id="st-sim" aria-pressed="true">Simulation</button></div>
-    </div>
-    <h3>Ballon und Planung</h3>
+
+    <h3>Ballon</h3>
     <div class="row">
       <label class="field"><span>Max. Steigen m/s</span><input id="lim-up" class="num" inputmode="decimal"></label>
       <label class="field"><span>Max. Sinken m/s</span><input id="lim-down" class="num" inputmode="decimal"></label>
@@ -842,75 +872,76 @@ details.more summary{cursor:pointer;color:var(--ink-2);font-size:.9rem;margin:.4
       <label class="field"><span>Mindesthöhe ft</span><input id="lim-min" class="num" inputmode="numeric"></label>
       <label class="field"><span>Höchsthöhe ft</span><input id="lim-max" class="num" inputmode="numeric"></label>
     </div>
-    <label class="field"><span>Zieltoleranz m</span><input id="lim-tol" class="num" inputmode="numeric"></label>
     <div class="row">
-      <label class="field"><span>Bodenfahrt ft über Grund</span><input id="lim-low" class="num" inputmode="numeric"></label>
-      <label class="field"><span>Bodenstrecke mind. m</span><input id="lim-final" class="num" inputmode="numeric"></label>
-    </div>
-    <label class="checkrow"><input type="checkbox" id="st-sinkonly"> Bodenanflug: nur Sinkpunkt berechnen, die Höhe wähle ich selbst</label>
-    <label class="field"><span>Winddaten höchstens (min alt)</span><input id="lim-age" class="num" inputmode="numeric">
-      <small>Ältere Werte fließen nicht mehr in die Planung ein. Ab 20 Minuten wird das Alter rot angezeigt.</small></label>
-    <p class="note">Der Höhenplan rechnet mit diesen Raten, auch das Abdriften während des Steigens und Sinkens. Er prüft eine Höhe oder einen Wechsel zwischen zwei Höhen. Erreichbar heißt: Vorbeiflug innerhalb des kleinsten Zielkreises, sonst innerhalb von MMA oder Toleranz, und vor Wertungsende des aktiven Tasks.</p>
-
-    <h3>Markerabwurf</h3>
-    <div class="row">
-      <label class="field"><span>Fallgeschwindigkeit m/s</span><input id="dr-fall" class="num" inputmode="decimal"></label>
+      <label class="field"><span>Marker fällt m/s</span><input id="dr-fall" class="num" inputmode="decimal"></label>
       <label class="field"><span>Bodenhöhe ft</span><input id="dr-ground" class="num" inputmode="numeric"></label>
     </div>
-    <p class="note">Der Marker treibt beim Fallen mit dem Wind der unteren Schichten. Die Bodenhöhe gilt, wenn beim Ziel keine eigene hinterlegt ist. Die Fallgeschwindigkeit deiner Marker am besten einmal selbst messen.</p>
-    <h3>Wettbewerbsgebiet</h3>
+    <button class="btn small" id="st-alt">Höhe mit Höhenmesser abgleichen</button>
+
+    <h3>Gebiet</h3>
     <div class="row">
       <label class="field"><span>UTM-Zone</span><input id="st-zone" class="num" type="number" min="1" max="60"></label>
       <label class="field"><span>Zone aus GPS</span>
         <select id="st-zoneauto"><option value="1">Automatisch</option><option value="0">Fest</option></select></label>
     </div>
-    <div class="row">
+    <label class="field"><span>Bezugspunkt (Mitte des Gebiets, 6/7)</span>
+      <input id="st-ref" class="num" inputmode="numeric" placeholder="500000/5500000">
+      <small id="st-refprev"></small>
+    </label>
+    <button class="btn small" id="st-refhere">Aktuelle Position übernehmen</button>
+    <div class="row" style="margin-top:.8rem">
       <label class="field"><span>Rechtswert-Stellen</span>
-        <select id="st-digE"><option value="3">3 Stellen (100 m)</option><option value="4">4 Stellen (10 m)</option><option value="5">5 Stellen (1 m)</option><option value="6">6 Stellen (voll)</option></select></label>
+        <select id="st-digE"><option value="3">3 (100 m)</option><option value="4">4 (10 m)</option><option value="5">5 (1 m)</option><option value="6">6 (voll)</option></select></label>
       <label class="field"><span>Hochwert-Stellen</span>
-        <select id="st-digN"><option value="3">3 Stellen (100 m)</option><option value="4">4 Stellen (10 m)</option><option value="5">5 Stellen (1 m)</option><option value="6">6 Stellen (1 m)</option><option value="7">7 Stellen (voll)</option></select></label>
+        <select id="st-digN"><option value="3">3 (100 m)</option><option value="4">4 (10 m)</option><option value="5">5 (1 m)</option><option value="6">6 (1 m)</option><option value="7">7 (voll)</option></select></label>
     </div>
     <p class="note" id="st-digprev" style="margin-top:0"></p>
-    <label class="field"><span>Bezugspunkt (6/7)</span>
-      <input id="st-ref" class="num" inputmode="numeric" placeholder="500000/5500000">
-      <small id="st-refprev">Mitte des Wettbewerbsgebiets. Damit werden 4/4-Koordinaten eindeutig.</small>
-    </label>
-    <button class="btn small" id="st-refhere">Aktuelle Position als Bezugspunkt</button>
-    <h3>Ansicht und Höhe</h3>
-    <label class="field"><span>Anflug-Ansicht automatisch ab (m)</span>
-      <input id="st-auto" class="num" inputmode="numeric">
-      <small>Unter dieser Entfernung zum aktiven Ziel blendet die Karte alles Unnötige aus. 0 schaltet das ab.</small>
-    </label>
-    <label class="checkrow" style="margin-top:.4rem"><input type="checkbox" id="st-big"> Große Bedienelemente für Handschuhe</label>
-    <button class="btn small" id="st-alt">Höhe abgleichen</button>
 
-    <h3>Simulation</h3>
-    <div class="row">
-      <label class="field"><span>Wind aus (°)</span><input id="st-wfrom" class="num" type="number" min="0" max="359"></label>
-      <label class="field"><span>Wind km/h</span><input id="st-wkmh" class="num" type="number" min="0" max="80"></label>
+    <h3>App</h3>
+    <div class="field"><span>Positionsquelle</span>
+      <div class="seg"><button id="st-gps" aria-pressed="false">GPS</button><button id="st-sim" aria-pressed="true">Simulation</button></div>
     </div>
-    <div class="row">
-      <label class="field"><span>Zeitraffer</span>
-        <select id="st-rate"><option value="1">Echtzeit</option><option value="5">5-fach</option><option value="20">20-fach</option></select></label>
-      <div class="field"><span>&nbsp;</span><button class="btn" id="st-simreset" style="width:100%">Neu starten</button></div>
-    </div>
-    <p class="note">Wind gilt für 1500 ft. Darüber dreht er nach rechts und wird stärker, darunter nach links und schwächer. Mit ▲/▼ steigst oder sinkst du mit den Raten aus „Ballon und Planung“.</p>
-    <h3>Darstellung und Daten</h3>
-    <div class="field"><div class="seg">
+    <div class="field"><span>Farben</span><div class="seg">
       <button data-theme-set="auto">Automatisch</button><button data-theme-set="light">Hell</button><button data-theme-set="dark">Dunkel</button>
     </div></div>
-    <div class="btns">
-      <button class="btn small" id="st-cleartrack">Track und Markierungen löschen</button>
-      <button class="btn small danger" id="st-clearall">Alle Ziele löschen</button>
-    </div>
+    <label class="checkrow"><input type="checkbox" id="st-big"> Große Tasten für Handschuhe</label>
     <button class="btn small" id="st-install" hidden>Als App installieren</button>
-    <p class="note" id="st-installnote"></p>
-    <div class="btns">
+    <p class="note" id="st-installnote" style="margin-top:0"></p>
+    <div class="btns" style="margin-top:.4rem">
       <button class="btn small" id="bk-save">Sicherung speichern</button>
       <label class="btn small filebtn">Sicherung laden<input type="file" id="bk-load" accept=".json,application/json" hidden></label>
     </div>
     <div class="row" style="align-items:center;margin-top:.4rem"><p class="note" id="bk-msg" style="margin:0"></p><button class="btn small danger" id="bk-apply" style="flex:0 0 auto" hidden>Ersetzen</button></div>
-    <p class="note">Alle Daten bleiben auf diesem Gerät gespeichert. Mit einer Sicherung überträgst du Ziele, Tasks, Sperrgebiete und Einstellungen auf ein anderes Gerät, das Kartenbild ist nicht enthalten. Diese App ist eine Navigationshilfe und ersetzt nicht den offiziellen Logger. Peilungen beziehen sich auf Gitter-Nord.</p>
+
+    <details class="more" style="margin-top:1rem"><summary><b>Erweitert</b></summary>
+      <h3>Planung</h3>
+      <label class="field"><span>Zieltoleranz m (ohne Zielkreis und MMA)</span><input id="lim-tol" class="num" inputmode="numeric"></label>
+      <div class="row">
+        <label class="field"><span>Bodenfahrt ft über Grund</span><input id="lim-low" class="num" inputmode="numeric"></label>
+        <label class="field"><span>Bodenstrecke mind. m</span><input id="lim-final" class="num" inputmode="numeric"></label>
+      </div>
+      <label class="checkrow"><input type="checkbox" id="st-sinkonly"> Bodenanflug: nur Sinkpunkt berechnen</label>
+      <div class="row">
+        <label class="field"><span>Winddaten max. Alter min</span><input id="lim-age" class="num" inputmode="numeric"></label>
+        <label class="field"><span>Anflug-Ansicht ab m</span><input id="st-auto" class="num" inputmode="numeric"></label>
+      </div>
+      <h3>Simulation</h3>
+      <div class="row">
+        <label class="field"><span>Wind aus °</span><input id="st-wfrom" class="num" type="number" min="0" max="359"></label>
+        <label class="field"><span>Wind km/h</span><input id="st-wkmh" class="num" type="number" min="0" max="80"></label>
+      </div>
+      <div class="row">
+        <label class="field"><span>Zeitraffer</span>
+          <select id="st-rate"><option value="1">Echtzeit</option><option value="5">5-fach</option><option value="20">20-fach</option></select></label>
+        <div class="field"><span>&nbsp;</span><button class="btn" id="st-simreset" style="width:100%">Neu starten</button></div>
+      </div>
+      <h3>Daten</h3>
+      <div class="btns" style="margin-top:0">
+        <button class="btn small" id="st-cleartrack">Track und Markierungen löschen</button>
+        <button class="btn small danger" id="st-clearall">Alle Ziele löschen</button>
+      </div>
+    </details>
+    <p class="note">Navigationshilfe, ersetzt nicht den offiziellen Logger. Peilungen beziehen sich auf Gitter-Nord. Alle Daten bleiben auf diesem Gerät.</p>
     <div class="btns"><button class="btn primary" data-close>Fertig</button></div>
   </div>
 </div>
@@ -1705,8 +1736,6 @@ function setTool(t){
   if (tool === 'measure') measure = { a:null, b:null };
   if (tool !== 'cal') cal = null;
   if (tool !== 'move') moveId = null;
-  $('#tool-add').setAttribute('aria-pressed', tool === 'add');
-  $('#tool-measure').setAttribute('aria-pressed', tool === 'measure');
   updateHint(); requestDraw();
 }
 function updateHint(){
@@ -2415,19 +2444,38 @@ $('#tl-import').addEventListener('change', async e => {
 $('#imp-sym').innerHTML = SYMS.map(([k, n]) => '<option value="' + k + '">Symbol: ' + n + '</option>').join('');
 $('#imp-lock').addEventListener('change', e => { S.settings.importLock = e.target.checked; save(); });
 $('#imp-sym').addEventListener('change', e => { S.settings.importSym = e.target.value; save(); });
-$('#tl-reset').addEventListener('click', e => {
+function resetFlightPoints(){
   const n = S.targets.filter(t => !t.locked).length;
-  confirmBtn(e.currentTarget, 'Fahrt-Punkte löschen', () => {
-    if (mpad) closePad();
-    const keep = new Set(S.targets.filter(t => t.locked).map(t => t.id));
-    S.targets = S.targets.filter(t => keep.has(t.id));
-    if (!keep.has(S.activeId)) S.activeId = null;
-    S.tasks.forEach(k => { k.targets = k.targets.filter(id => keep.has(id)); k.marks = []; k.decl = []; });
-    S.activeTaskId = null; S.track = []; S.notes = [];
-    invalidatePlan(); save(); renderList(); requestDraw(); updateHud();
-    tlMsg(n + (n === 1 ? ' Punkt' : ' Punkte') + ' gelöscht, ' + keep.size + ' gesperrte behalten.'); $('#tl-undo').hidden = true;
-  });
+  if (mpad) closePad();
+  const keep = new Set(S.targets.filter(t => t.locked).map(t => t.id));
+  S.targets = S.targets.filter(t => keep.has(t.id));
+  if (!keep.has(S.activeId)) S.activeId = null;
+  S.tasks.forEach(k => { k.targets = k.targets.filter(id => keep.has(id)); k.marks = []; k.decl = []; });
+  S.activeTaskId = null; S.track = []; S.notes = []; S.trackOn = false; setTrackUi();
+  invalidatePlan(); save(); requestDraw(); updateHud();
+  return { n, kept:keep.size };
+}
+function renderReset(){
+  const n = S.targets.filter(t => !t.locked).length, k = S.targets.length - n;
+  setText('rs-info', n + (n === 1 ? ' Ziel wird' : ' Ziele werden') + ' gelöscht, ' + k + ' gesperrte bleiben. Track: ' + (S.track.length > 1 ? fmtDist(trackStats(S.track).dist) : 'leer') + '.');
+  $('#rs-log').hidden = S.track.length < 2;
+}
+$('#rs-log').addEventListener('click', async e => {
+  if (S.track.length < 2) return;
+  try { await storeFlight(); save(); e.currentTarget.textContent = 'Im Logbuch gespeichert ✓'; e.currentTarget.disabled = true; }
+  catch (err) { setText('rs-info', 'Speichern im Logbuch war nicht möglich.'); }
 });
+$('#rs-go').addEventListener('click', e => confirmBtn(e.currentTarget, 'Fahrt-Punkte löschen', () => {
+  const r = resetFlightPoints(); closeSheets(); say('Karte zurückgesetzt');
+  setText('tl-msg', r.n + (r.n === 1 ? ' Punkt' : ' Punkte') + ' gelöscht, ' + r.kept + ' gesperrte behalten.');
+}));
+function renderBrief(){
+  setText('br-ts-state', S.tasks.length ? 'Geladen: ' + S.tasks.length + (S.tasks.length === 1 ? ' Task' : ' Tasks') + (S.flight.launchFrom ? ', Start ' + S.flight.launchFrom + (S.flight.launchTo ? '–' + S.flight.launchTo : '') : '') : 'Noch kein Task Sheet.');
+  const nb = S.windManual.filter(w => w.src === 'b').length;
+  setText('br-wx-state', nb ? 'Geladen: ' + nb + ' Höhen mit Wind.' : 'Noch kein Wetterbericht.');
+}
+$('#br-ts').addEventListener('click', () => openTsImport('ts'));
+$('#br-wx').addEventListener('click', () => openTsImport('wx'));
 $('#tl-undo').addEventListener('click', () => {
   if (!importUndo) return;
   S.targets = importUndo.targets; if (!S.targets.some(t => t.id === S.activeId)) S.activeId = null;
@@ -3217,14 +3265,18 @@ const openers = {
   map: () => { renderMapSheet(); openSheet('#sheet-map'); },
   log: () => { logMsg(''); renderLog(); openSheet('#sheet-log'); },
   crew: () => { renderCrew(); openSheet('#sheet-crew'); },
+  brief: () => { renderBrief(); openSheet('#sheet-brief'); },
+  reset: () => { const b = $('#rs-log'); b.textContent = 'Vorher im Logbuch speichern'; b.disabled = false; renderReset(); openSheet('#sheet-reset'); },
   check: () => { renderCheck(); openSheet('#sheet-check'); },
   settings: () => { bkMsg(''); $('#bk-apply').hidden = true; fillSettings(); installNote(); openSheet('#sheet-settings'); }
 };
 $('#btn-menu').addEventListener('click', () => {
   { const o = checks().filter(c => !c.ok).length; setText('mt-check', o ? o + (o === 1 ? ' Punkt offen' : ' Punkte offen') : 'alles bereit'); }
+  $('#tile-crew').hidden = !!window.__wfOwnSite;
+  { const nb = S.windManual.filter(w => w.src === 'b').length; setText('mt-brief', (S.tasks.length ? S.tasks.length + ' Tasks' : 'Task Sheet') + ', ' + (nb ? nb + ' Windhöhen' : 'Wetter')); }
   setText('mt-tasks', S.tasks.length ? S.tasks.length + (S.tasks.length === 1 ? ' Task' : ' Tasks') : 'Tasks und Zeitfenster');
   setText('mt-list', S.targets.length + (S.targets.length === 1 ? ' Ziel' : ' Ziele'));
-  const n = windProfile().length; setText('mt-wind', n ? n + ' Höhen bekannt' : 'Profil und Pibal');
+  const n = windProfile().length; setText('mt-wind', n ? n + (n === 1 ? ' Höhe bekannt' : ' Höhen bekannt') : 'Profil und Pibal');
   setText('mt-pz', S.pz.length ? S.pz.length + (S.pz.length === 1 ? ' Gebiet' : ' Gebiete') : 'keine eingetragen');
   setText('mt-map', !S.map.has ? 'kein Kartenbild' : S.map.cal ? 'kalibriert' : 'nicht kalibriert');
   setText('mt-set', S.settings.mode === 'gps' ? 'GPS aktiv' : 'Simulation aktiv');
@@ -3600,7 +3652,7 @@ function fillSettings(){
   $('#dr-fall').value = String(st.fallMs).replace('.', ','); $('#dr-ground').value = st.groundFt; $('#st-big').checked = !!st.big;
   $('#st-wfrom').value = st.simFrom; $('#st-wkmh').value = st.simKmh; $('#st-rate').value = String(st.simRate);
   document.querySelectorAll('[data-theme-set]').forEach(b => b.setAttribute('aria-pressed', b.dataset.themeSet === st.theme));
-  $('#st-refprev').className = ''; $('#st-refprev').textContent = 'Mitte des Wettbewerbsgebiets. Damit werden 4/4-Koordinaten eindeutig.';
+  $('#st-refprev').className = ''; $('#st-refprev').textContent = 'Damit werden kurze Koordinaten wie 4/4 eindeutig.';
 }
 $('#st-gps').addEventListener('click', () => { S.settings.mode = 'gps'; save(); applyMode(); requestDraw(); });
 $('#st-sim').addEventListener('click', () => { S.settings.mode = 'sim'; save(); applyMode(); requestDraw(); });
@@ -3644,8 +3696,6 @@ function applyTheme(){
 document.querySelectorAll('[data-theme-set]').forEach(b => b.addEventListener('click', () => { S.settings.theme = b.dataset.themeSet; save(); applyTheme(); fillSettings(); }));
 
 /* Werkzeuge */
-$('#tool-add').addEventListener('click', () => setTool('add'));
-$('#tool-measure').addEventListener('click', () => setTool('measure'));
 $('#hint-cancel').addEventListener('click', () => setTool(tool));
 $('#hint-done').addEventListener('click', () => {
   if (tool === 'calnote') { tool = null; $('#hint').hidden = true; return; }
@@ -3705,6 +3755,9 @@ if (navigator.serviceWorker) navigator.serviceWorker.addEventListener('message',
 setTrackUi();
 applyMode();
 if (S.firstRun) openSheet('#sheet-welcome');
+else if (S.settings.mode === 'gps' && !S.trackOn && Date.now() - (S.ckShownAt || 0) > 3 * 3600000) {
+  setTimeout(() => { if (document.querySelector('.back.open')) return; if (checks().some(c => !c.ok)) { S.ckShownAt = Date.now(); save(); openers.check(); } }, 4000);
+}
 setInterval(() => { updateHud(); requestDraw(); }, 1000);
 window.__wfStarted = true;
 })();
