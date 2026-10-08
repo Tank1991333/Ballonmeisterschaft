@@ -314,6 +314,7 @@ input[type=range]{padding:0;border:0;background:none;accent-color:var(--ink)}
   <div class="overlay">
     <div class="alert" id="alert" role="alert" hidden></div>
     <div class="gpsbar" id="gpsbar" hidden><span id="gps-text"></span><button class="btn small" id="gps-retry" style="flex:0 0 auto">Erneut versuchen</button></div>
+    <div class="gpsbar wait" id="updbar" hidden><span>Eine neue Version der App ist geladen.</span><button class="btn small primary" id="upd-reload" style="flex:0 0 auto">Neu laden</button></div>
     <div class="crewcard" id="crewcard" hidden></div>
     <div class="hint" id="hint" hidden><span id="hint-text"></span><button class="ghost" id="hint-cancel" hidden>Abbrechen</button><button id="hint-done">Fertig</button></div>
     <div class="cursorbar" id="cursorbar" hidden><div class="cb-t"><span id="cb-code"></span><small id="cb-info"></small></div><button class="btn small" id="cb-add">Ziel hier</button></div>
@@ -409,7 +410,7 @@ input[type=range]{padding:0;border:0;background:none;accent-color:var(--ink)}
       <button data-open="log"><b>Logbuch</b><small id="mt-log"></small></button>
       <button data-open="settings"><b>Einstellungen</b><small id="mt-set"></small></button>
     </div>
-    <p class="note" style="text-align:center;margin-top:.9rem">Version 2026-10-08.7</p>
+    <p class="note" style="text-align:center;margin-top:.9rem">Version 2026-10-08.8</p>
   </div>
 </div>
 
@@ -3588,6 +3589,8 @@ function installNote(){
     : isIOS() ? 'Als App installieren: in Safari auf Teilen tippen, dann „Zum Home-Bildschirm“.'
     : window.__wfInstall ? '' : 'Als App installieren: im Browser-Menü „Zum Startbildschirm hinzufügen“ oder „App installieren“.');
 }
+$('#upd-reload').addEventListener('click', () => location.reload());
+if (navigator.serviceWorker) navigator.serviceWorker.addEventListener('message', e => { if (e.data === 'wf-updated') $('#updbar').hidden = false; });
 
 setTrackUi();
 applyMode();

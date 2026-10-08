@@ -1,5 +1,5 @@
 /* Wettfahrt – Offline-Speicher. Bei jeder neuen Version die Nummer erhöhen. */
-const CACHE = 'wettfahrt-2026-10-08-7';
+const CACHE = 'wettfahrt-2026-10-08-8';
 const CORE = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png'];
 const EXTRA = [
   'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js',
@@ -24,17 +24,29 @@ self.addEventListener('fetch', e => {
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
   if (req.mode === 'navigate') {
-    /* Seite: erst Netz (mit Zeitlimit), sonst gespeicherte Version */
+    /* Seite: Netz bevorzugt. Ist es zu langsam, sofort die gespeicherte Version zeigen
+       und im Hintergrund weiterladen, damit beim nächsten Start die neue Version da ist. */
     e.respondWith((async () => {
-      const c = await caches.open(CACHE);
-      try {
-        const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), 4000);
-        const r = await fetch(req, { signal:ctl.signal }); clearTimeout(t);
-        if (r.ok) c.put('./index.html', r.clone());
+      const c = await caches.open(CACHE), cached = (await c.match('./index.html')) || (await c.match('./'));
+      const oldText = cached ? await cached.clone().text() : null;
+      let servedCache = false;
+      const net = fetch(req, { cache:'no-store' }).then(async r => {
+        if (r && r.ok) {
+          const fresh = await r.clone().text();
+          await c.put('./index.html', r.clone());
+          if (servedCache && oldText !== null && oldText !== fresh) {
+            for (const cl of await self.clients.matchAll({ type:'window' })) cl.postMessage('wf-updated');
+          }
+        }
         return r;
-      } catch (err) {
-        return (await c.match('./index.html')) || (await c.match('./')) || Response.error();
-      }
+      });
+      e.waitUntil(net.catch(() => null));
+      if (!cached) { try { return await net; } catch (err) { return Response.error(); } }
+      const timeout = new Promise(res => setTimeout(() => res(null), 4000));
+      const r = await Promise.race([net.catch(() => null), timeout]);
+      if (r) return r;
+      servedCache = true;
+      return cached;
     })());
     return;
   }
