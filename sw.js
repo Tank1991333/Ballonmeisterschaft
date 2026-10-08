@@ -1,5 +1,5 @@
 /* Wettfahrt – Offline-Speicher. Bei jeder neuen Version die Nummer erhöhen. */
-const CACHE = 'wettfahrt-2026-10-08-8';
+const CACHE = 'wettfahrt-2026-10-08-9';
 const CORE = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png'];
 const EXTRA = [
   'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js',

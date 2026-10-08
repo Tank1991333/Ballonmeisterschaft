@@ -82,7 +82,9 @@ button{font:inherit;color:inherit;cursor:pointer}
 .overlay{position:absolute;left:.65rem;right:4.4rem;display:flex;flex-direction:column;gap:.45rem;top:.65rem;pointer-events:none}
 .overlay>*{pointer-events:auto}
 .hint{display:flex;align-items:center;gap:.6rem;background:var(--ink);color:var(--panel);border-radius:12px;padding:.55rem .55rem .55rem .85rem;font-weight:500}
-.hint span{flex:1}
+.hint{flex-wrap:wrap}
+.hint span{flex:1 1 11rem;min-width:0}
+.hint button{flex:0 0 auto}
 .hint button{border:0;background:var(--target);color:var(--target-ink);border-radius:8px;padding:.45rem .8rem;font-weight:600}
 .alert{background:var(--pz);color:#fff;border-radius:12px;padding:.6rem .85rem;font-weight:600;line-height:1.25}
 .alert.inside{animation:pulse 1s ease-in-out infinite alternate}
@@ -195,6 +197,11 @@ input[type=range]{padding:0;border:0;background:none;accent-color:var(--ink)}
 .checkrow{display:flex;gap:.6rem;align-items:center;font-weight:600;margin:.2rem 0 .7rem}
 .checkrow input{width:1.3rem;height:1.3rem;accent-color:var(--ink)}
 .wtab td.old{color:var(--warn)}
+.stepper{display:flex;gap:.3rem}
+.stepper button{flex:0 0 46px;border:1.5px solid var(--panel-edge);background:var(--paper-2);border-radius:9px;font-size:1.35rem;font-weight:700;padding:0}
+.stepper input{text-align:center;min-width:0}
+.calpad .mp-btns .btn{font-size:.82rem}
+details.more summary{cursor:pointer;color:var(--ink-2);font-size:.9rem;margin:.4rem 0}
 .gpsbar{display:flex;align-items:center;gap:.6rem;background:var(--panel);border:1.5px solid var(--warn);border-left:5px solid var(--warn);border-radius:12px;padding:.5rem .5rem .5rem .75rem;font-size:.92rem;line-height:1.3}
 .gpsbar.wait{border-color:var(--panel-edge);border-left-color:var(--ink-2)}
 .gpsbar span{flex:1}
@@ -358,6 +365,19 @@ input[type=range]{padding:0;border:0;background:none;accent-color:var(--ink)}
       <div class="mp-btns"><button class="btn small" id="mp-edit">Bearbeiten</button><button class="btn small primary" id="mp-done">Fertig</button></div>
     </div>
   </div>
+  <div class="movepad calpad" id="calpad" hidden>
+    <div class="mp-grid">
+      <button data-cpd="-1,1" aria-label="Bild nach Nordwesten">↖</button><button data-cpd="0,1" aria-label="Bild nach Norden">↑</button><button data-cpd="1,1" aria-label="Bild nach Nordosten">↗</button>
+      <button data-cpd="-1,0" aria-label="Bild nach Westen">←</button><button id="cp-reset" aria-label="Zurücksetzen" title="Zurücksetzen">↺</button><button data-cpd="1,0" aria-label="Bild nach Osten">→</button>
+      <button data-cpd="-1,-1" aria-label="Bild nach Südwesten">↙</button><button data-cpd="0,-1" aria-label="Bild nach Süden">↓</button><button data-cpd="1,-1" aria-label="Bild nach Südosten">↘</button>
+    </div>
+    <div class="mp-side">
+      <div class="mp-t"><b>Karte feinjustieren</b><span style="font-size:.85rem">Bildgitter auf App-Gitter legen</span></div>
+      <div class="seg mp-step" id="cp-step"><button data-s="10">10 m</button><button data-s="50">50 m</button><button data-s="200">200 m</button></div>
+      <div class="mp-btns"><button class="btn small" id="cp-rl" aria-label="Bild nach links drehen">⟲</button><button class="btn small" id="cp-rr" aria-label="Bild nach rechts drehen">⟳</button><button class="btn small" id="cp-sm" aria-label="Bild verkleinern">−</button><button class="btn small" id="cp-sp" aria-label="Bild vergrößern">+</button></div>
+      <div class="mp-btns"><button class="btn small primary" id="cp-done">Fertig</button></div>
+    </div>
+  </div>
   <div class="altctl" id="altctl" hidden>
     <button id="alt-up" aria-label="Steigen (Simulation)">▲</button>
     <output id="alt-sim">1500 ft</output>
@@ -410,7 +430,7 @@ input[type=range]{padding:0;border:0;background:none;accent-color:var(--ink)}
       <button data-open="log"><b>Logbuch</b><small id="mt-log"></small></button>
       <button data-open="settings"><b>Einstellungen</b><small id="mt-set"></small></button>
     </div>
-    <p class="note" style="text-align:center;margin-top:.9rem">Version 2026-10-08.8</p>
+    <p class="note" style="text-align:center;margin-top:.9rem">Version 2026-10-08.9</p>
   </div>
 </div>
 
@@ -614,11 +634,12 @@ input[type=range]{padding:0;border:0;background:none;accent-color:var(--ink)}
       <label class="field" style="margin-top:1rem"><span>Deckkraft</span><input type="range" id="map-op" min="0.2" max="1" step="0.05"></label>
       <div class="btns">
         <button class="btn small" id="map-cal">Neu kalibrieren</button>
+        <button class="btn small" id="map-fine">Feinjustieren</button>
         <button class="btn small" id="map-toggle">Ausblenden</button>
         <button class="btn small danger" id="map-del">Karte entfernen</button>
       </div>
     </div>
-    <p class="note">Lade die Karte als Foto oder Bild (JPG oder PNG), bei PDF-Karten vorher einen Screenshot machen. Danach tippst du zwei Gitterkreuzungen an, die weit auseinander liegen, und gibst ihre Koordinaten ein. Das Bild bleibt auf diesem Gerät gespeichert.</p>
+    <p class="note">Lade die Karte als Foto oder Bild (JPG oder PNG), bei PDF-Karten vorher einen Screenshot machen. Danach schiebst du die Karte zweimal so, dass das Kreuz auf einer Gitterkreuzung liegt, und gibst die beiden Liniennummern ein. Zum Schluss kannst du das Bild mit Pfeilen feinjustieren. Das Bild bleibt auf diesem Gerät gespeichert.</p>
     <div class="btns"><button class="btn" data-close>Schließen</button></div>
   </div>
 </div>
@@ -626,11 +647,18 @@ input[type=range]{padding:0;border:0;background:none;accent-color:var(--ink)}
 <!-- Passpunkt -->
 <div class="back" id="sheet-cal">
   <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="cal-title">
-    <h2 id="cal-title">Passpunkt 1</h2>
-    <label class="field"><span>Koordinate dieses Punkts</span>
-      <input id="cal-coord" class="num" inputmode="numeric" autocomplete="off" placeholder="1200/3400">
-      <small id="cal-prev">Gitterkreuzung als 4/4, z. B. 1200/3400</small>
-    </label>
+    <h2 id="cal-title">Passpunkt 1 von 2</h2>
+    <p class="note" style="margin-top:0">Welche Gitterlinien kreuzen sich am Kreuz? Die Zahlen stehen auf der Wettbewerbskarte am Rand der Linien.</p>
+    <div class="row" style="margin-top:.6rem">
+      <div class="field"><span>Senkrechte Linie</span>
+        <div class="stepper"><button data-ck="e" data-cd="-1" aria-label="Senkrechte Linie minus eins">−</button><input id="cal-e" class="num" inputmode="numeric" maxlength="2" autocomplete="off"><button data-ck="e" data-cd="1" aria-label="Senkrechte Linie plus eins">+</button></div></div>
+      <div class="field"><span>Waagrechte Linie</span>
+        <div class="stepper"><button data-ck="n" data-cd="-1" aria-label="Waagrechte Linie minus eins">−</button><input id="cal-n" class="num" inputmode="numeric" maxlength="2" autocomplete="off"><button data-ck="n" data-cd="1" aria-label="Waagrechte Linie plus eins">+</button></div></div>
+    </div>
+    <small class="note" id="cal-prev" style="display:block;margin-top:0"></small>
+    <details class="more"><summary>Keine Gitterkreuzung? Koordinate eingeben</summary>
+      <input id="cal-coord" class="num" inputmode="numeric" autocomplete="off" placeholder="1234/5678">
+    </details>
     <div class="btns">
       <button class="btn" id="cal-cancel">Abbrechen</button>
       <button class="btn primary" id="cal-ok">Punkt übernehmen</button>
@@ -1428,9 +1456,9 @@ function draw(){
   frame = { m, prof, t, plan:getPlan(), drop:dropFor(t, profFor(t, prof), m), th:taskHelp(activeTask(), m, prof) };
   drawMapImage(); drawGrid(); drawPz(); drawTrack(); drawNotes(S.notes); drawTargets(); drawTaskHelp(); drawAdvice(); drawDrop();
   drawMeasure(); drawDraft(); drawRemote(); drawBalloon(); drawScale();
-  const cur = (!view.follow || tool === 'move') && !mpad;
+  const cur = (!view.follow || tool === 'move' || tool === 'cal' || calpadOn) && !mpad;
   if (cur) drawCursor();
-  updateCursorBar(cur && !tool);
+  updateCursorBar(cur && !tool && !calpadOn);
 }
 function drawMapImage(){
   if (!mapImg || !mapImg.complete || !S.map.has || !S.map.show || !S.map.a) return;
@@ -1685,13 +1713,13 @@ function updateHint(){
   const h = $('#hint');
   if (!tool) { h.hidden = true; return; }
   h.hidden = false;
-  $('#hint-done').textContent = tool === 'cal' ? 'Abbrechen' : tool === 'move' ? 'Hier ablegen' : 'Fertig';
-  $('#hint-cancel').hidden = tool !== 'move';
+  $('#hint-done').textContent = tool === 'cal' ? 'Punkt setzen' : tool === 'move' ? 'Hier ablegen' : 'Fertig';
+  $('#hint-cancel').hidden = tool !== 'move' && tool !== 'cal';
   $('#hint-text').textContent =
       tool === 'move' ? 'Karte verschieben, bis das Kreuz auf der neuen Stelle liegt.'
     : tool === 'add' ? 'Tippe auf die Karte, um das Ziel zu setzen.'
     : tool === 'pz' ? (pzDraft.length ? pzDraft.length + (pzDraft.length === 1 ? ' Punkt' : ' Punkte') + ' gesetzt. Weiter tippen oder Fertig.' : 'Tippe den Mittelpunkt oder die Eckpunkte.')
-    : tool === 'cal' ? 'Verschiebe und zoome das Bild, dann tippe auf Gitterkreuzung ' + (cal.pts.length + 1) + '.'
+    : tool === 'cal' ? (cal.pts.length ? 'Schritt 2 von 2: Zu einer weit entfernten Gitterkreuzung schieben (mehrere Linien weiter), Kreuz genau darauf legen.' : 'Schritt 1 von 2: Karte schieben und zoomen, bis das Kreuz genau auf einer Gitterkreuzung liegt.')
     : !measure.a ? 'Tippe auf den Startpunkt.' : !measure.b ? 'Tippe auf den Endpunkt.' : 'Erneut tippen für eine neue Messung.';
 }
 const railW = () => S.settings.big ? 76 : 62;
@@ -1768,7 +1796,7 @@ function onTap(x, y){
   if (tool === 'add') { setTool('add'); openTargetForm(null, { E, N }); return; }
   if (tool === 'measure') { if (!measure.a || measure.b) measure = { a:[E, N], b:null }; else measure.b = [E, N]; updateHint(); requestDraw(); return; }
   if (tool === 'pz') { pzDraft.push([E, N]); updateHint(); requestDraw(); return; }
-  if (tool === 'cal') { cal.pending = worldToImg(E, N); openCalSheet(); return; }
+  if (tool === 'cal') { view.cx = E; view.cy = N; requestDraw(); return; }
   const tol = S.settings.big ? 40 : 26;
   const nt = S.notes.find(n => { const [nx, ny] = w2s(n.E, n.N); return Math.hypot(nx - x, ny - y) < tol; });
   if (nt) { openNote(nt); return; }
@@ -3423,6 +3451,7 @@ function renderMapSheet(){
   $('#map-ctrl').hidden = !S.map.has;
   $('#map-op').value = S.map.opacity;
   $('#map-toggle').textContent = S.map.show ? 'Ausblenden' : 'Einblenden';
+  $('#map-fine').hidden = !S.map.cal;
 }
 function setMapBlob(blob){
   if (mapUrl) URL.revokeObjectURL(mapUrl);
@@ -3453,33 +3482,80 @@ $('#map-del').addEventListener('click', e => confirmBtn(e.target, 'Karte entfern
   S.map = { ...defaults().map, opacity:S.map.opacity }; mapImg = null; save(); renderMapSheet(); requestDraw();
 }));
 function startCal(){ setFollow(false); cal = { pts:[], pending:null }; tool = null; setTool('cal'); }
+function calKm(v){ v = ((Math.round(v) % 100) + 100) % 100; return pad(v, 2); }
 function openCalSheet(){
-  $('#cal-title').textContent = 'Passpunkt ' + (cal.pts.length + 1);
-  $('#cal-coord').value = ''; $('#cal-prev').className = ''; $('#cal-prev').textContent = 'Gitterkreuzung als 4/4, z. B. 1200/3400';
-  openSheet('#sheet-cal'); setTimeout(() => $('#cal-coord').focus(), 60);
+  const first = !cal.pts.length;
+  setText('cal-title', 'Passpunkt ' + (cal.pts.length + 1) + ' von 2');
+  const base = first ? [S.settings.refE, S.settings.refN] : cal.pts[0].w;
+  $('#cal-e').value = calKm(Math.floor(base[0] / 1000)); $('#cal-n').value = calKm(Math.floor(base[1] / 1000));
+  $('#cal-coord').value = ''; $('#cal-prev').className = 'note'; calPreview();
+  openSheet('#sheet-cal');
+}
+function calCoord(){
+  const raw = $('#cal-coord').value.trim();
+  if (raw) return parseCoord(raw);
+  const e = parseInt($('#cal-e').value, 10), n = parseInt($('#cal-n').value, 10);
+  if (!isFinite(e) || !isFinite(n) || e < 0 || e > 99 || n < 0 || n > 99) return null;
+  return { E:resolve(e * 1000, S.settings.refE, 1e5), N:resolve(n * 1000, S.settings.refN, 1e5) };
+}
+function calPreview(){
+  const c = calCoord(), el = $('#cal-prev');
+  if (!c) { el.className = 'note err'; el.textContent = 'Bitte zwei Zahlen von 00 bis 99 eingeben.'; return; }
+  el.className = 'note'; el.textContent = 'Kreuzung ' + code44(c.E, c.N) + ' (Rechtswert ' + Math.round(c.E) + ', Hochwert ' + Math.round(c.N) + ')';
 }
 function cancelCalPoint(){ if (cal) cal.pending = null; }
-$('#cal-coord').addEventListener('input', () => coordPreview($('#cal-prev'), parseCoord($('#cal-coord').value), $('#cal-coord').value.trim(), 'Gitterkreuzung als 4/4, z. B. 1200/3400'));
+document.querySelectorAll('#sheet-cal [data-ck]').forEach(b => b.addEventListener('click', () => {
+  const inp = $('#cal-' + b.dataset.ck), v = parseInt(inp.value, 10) || 0; inp.value = calKm(v + +b.dataset.cd); calPreview();
+}));
+['#cal-e', '#cal-n', '#cal-coord'].forEach(id => $(id).addEventListener('input', calPreview));
 $('#cal-cancel').addEventListener('click', () => { cancelCalPoint(); closeSheets(); });
 $('#cal-ok').addEventListener('click', () => {
-  const c = parseCoord($('#cal-coord').value);
-  if (!c || !cal || !cal.pending) { $('#cal-prev').className = 'err'; $('#cal-prev').textContent = 'Koordinate nicht erkannt.'; return; }
-  const p = { img:cal.pending, w:[c.E, c.N] }; cal.pending = null;
+  const c = calCoord();
+  if (!c || !cal || !cal.pending) { calPreview(); return; }
+  const p = { img:cal.pending, w:[c.E, c.N] };
   if (cal.pts.length === 0) {
-    cal.pts.push(p);
+    cal.pending = null; cal.pts.push(p);
     S.map.b = csub(p.w, cmul(S.map.a, [p.img[0], -p.img[1]]));
     view.cx = p.w[0]; view.cy = p.w[1];
     closeSheets(); updateHint(); requestDraw(); return;
   }
   const p1 = cal.pts[0], z1 = [p1.img[0], -p1.img[1]], z2 = [p.img[0], -p.img[1]];
-  if (Math.hypot(z2[0] - z1[0], z2[1] - z1[1]) < 40 || Math.hypot(p.w[0] - p1.w[0], p.w[1] - p1.w[1]) < 50) {
-    $('#cal-prev').className = 'err'; $('#cal-prev').textContent = 'Die beiden Punkte liegen zu nah beieinander. Wähle eine weiter entfernte Kreuzung.';
-    cal.pending = null; return;
+  if (Math.hypot(z2[0] - z1[0], z2[1] - z1[1]) < 40 || Math.hypot(p.w[0] - p1.w[0], p.w[1] - p1.w[1]) < 900) {
+    const el = $('#cal-prev'); el.className = 'note err'; el.textContent = 'Die beiden Punkte liegen zu nah beieinander oder haben dieselben Liniennummern. Wähle eine Kreuzung mehrere Linien weiter.';
+    return;
   }
+  cal.pending = null;
   S.map.a = cdiv(csub(p.w, p1.w), csub(z2, z1));
   S.map.b = csub(p1.w, cmul(S.map.a, z1));
-  S.map.cal = true; save(); closeSheets(); tool = 'cal'; setTool('cal'); requestDraw();
+  S.map.cal = true; save(); closeSheets(); tool = 'cal'; setTool('cal');
+  view.cx = (p.w[0] + p1.w[0]) / 2; view.cy = (p.w[1] + p1.w[1]) / 2;
+  openCalpad(); requestDraw();
 });
+
+/* Feinjustieren */
+let calpadOn = false, cpStep = 50, cpOrig = null;
+function openCalpad(){
+  if (!S.map.has || !S.map.a) return;
+  closeSheets(); if (tool) setTool(tool); setFollow(false);
+  cpOrig = { a:S.map.a.slice(), b:S.map.b.slice() }; calpadOn = true;
+  $('#calpad').hidden = false; $('.mapwrap').classList.add('padopen');
+  document.querySelectorAll('#cp-step button').forEach(b => b.setAttribute('aria-pressed', +b.dataset.s === cpStep));
+  requestDraw();
+}
+function closeCalpad(){ calpadOn = false; $('#calpad').hidden = true; $('.mapwrap').classList.remove('padopen'); save(); requestDraw(); }
+function cpTransform(r){ const c = [view.cx, view.cy]; S.map.a = cmul(r, S.map.a); S.map.b = cadd(c, cmul(r, csub(S.map.b, c))); save(); requestDraw(); }
+document.querySelectorAll('#calpad [data-cpd]').forEach(b => b.addEventListener('click', () => {
+  const [dx, dy] = b.dataset.cpd.split(',').map(Number); S.map.b = cadd(S.map.b, [dx * cpStep, dy * cpStep]); save(); requestDraw();
+}));
+document.querySelectorAll('#cp-step button').forEach(b => b.addEventListener('click', () => { cpStep = +b.dataset.s; document.querySelectorAll('#cp-step button').forEach(x => x.setAttribute('aria-pressed', x === b)); }));
+const rot = deg => [Math.cos(deg * RAD), Math.sin(deg * RAD)];
+$('#cp-rl').addEventListener('click', () => cpTransform(rot(.2)));
+$('#cp-rr').addEventListener('click', () => cpTransform(rot(-.2)));
+$('#cp-sm').addEventListener('click', () => cpTransform([1 / 1.003, 0]));
+$('#cp-sp').addEventListener('click', () => cpTransform([1.003, 0]));
+$('#cp-reset').addEventListener('click', () => { if (cpOrig) { S.map.a = cpOrig.a.slice(); S.map.b = cpOrig.b.slice(); save(); requestDraw(); } });
+$('#cp-done').addEventListener('click', closeCalpad);
+$('#map-fine').addEventListener('click', openCalpad);
 
 /* Einstellungen */
 function fillSettings(){
@@ -3542,6 +3618,7 @@ $('#hint-cancel').addEventListener('click', () => setTool(tool));
 $('#hint-done').addEventListener('click', () => {
   if (tool === 'move') { const t = S.targets.find(x => x.id === moveId); if (t) { t.E = view.cx; t.N = view.cy; save(); invalidatePlan(); } setTool('move'); updateHud(); return; }
   if (tool === 'pz') { setTool('pz'); finishPzDraft(); return; }
+  if (tool === 'cal') { cal.pending = worldToImg(view.cx, view.cy); openCalSheet(); return; }
   setTool(tool);
 });
 $('#btn-follow').addEventListener('click', () => setFollow(true));
