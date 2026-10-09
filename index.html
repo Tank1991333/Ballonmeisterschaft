@@ -282,14 +282,24 @@ details.more summary{cursor:pointer;color:var(--ink-2);font-size:.9rem;margin:.4
 :root.big input,:root.big select{padding:.85rem .8rem;font-size:1.15rem}
 :root.big .hint button{padding:.7rem 1rem}
 @media (orientation: landscape) and (min-width: 700px){
-  body{display:grid;grid-template-columns:minmax(0,1fr) minmax(320px,34%);grid-template-rows:auto minmax(0,1fr)}
+  body{display:grid;grid-template-columns:minmax(0,7fr) minmax(250px,3fr);grid-template-rows:auto minmax(0,1fr)}
   .top{grid-column:1/-1}
   .mapwrap{grid-column:1;grid-row:2}
-  .hud{grid-column:2;grid-row:2;border-top:0;border-left:1px solid var(--panel-edge);overflow-y:auto;align-content:start}
+  .hud{grid-column:2;grid-row:2;border-top:0;border-left:1px solid var(--panel-edge);overflow-y:auto;align-content:start;padding:.6rem .7rem}
   .stats{grid-template-columns:repeat(3,1fr)}
+  .stats dd{font-size:1.35rem}
+  .stats dt{font-size:.78rem}
   .advice{grid-template-columns:1fr}
-  .dial{width:120px;height:120px}
-  .dist{font-size:3.8rem}
+  .dial{width:96px;height:96px}
+  .dist{font-size:3rem}
+}
+@media (orientation: landscape) and (min-width: 700px) and (max-height: 560px){
+  .hud{padding:.4rem .5rem}
+  .dial{width:68px;height:68px}
+  .dist{font-size:2.3rem}
+  .stats dd{font-size:1.05rem;white-space:nowrap}
+  .stats dt{font-size:.68rem}
+  .advice .val{font-size:1.15rem}
 }
 </style>
 </head>
@@ -454,7 +464,7 @@ details.more summary{cursor:pointer;color:var(--ink-2);font-size:.9rem;margin:.4
       <button data-open="reset"><b>Fahrt-Punkte löschen</b><small>Karte für die nächste Fahrt</small></button>
     </div>
     <button class="btn" data-open="settings" style="width:100%;margin-top:1rem">Einstellungen<small id="mt-set" style="display:none"></small></button>
-    <p class="note" style="text-align:center;margin-top:.9rem">Version 2026-10-09.12</p>
+    <p class="note" style="text-align:center;margin-top:.9rem">Version 2026-10-09.13</p>
   </div>
 </div>
 
