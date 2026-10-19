@@ -199,6 +199,7 @@ input[type=range]{padding:0;border:0;background:none;accent-color:var(--ink)}
 .checkrow{display:flex;gap:.6rem;align-items:center;font-weight:600;margin:.2rem 0 .7rem}
 .checkrow input{width:1.3rem;height:1.3rem;accent-color:var(--ink)}
 .wtab td.old{color:var(--warn)}
+.alert.line{background:#B9520C}
 .ringrow{display:flex;gap:.4rem;margin-bottom:.4rem}
 .ringrow input{flex:1 1 40%;min-width:0}
 .ringrow select{flex:1 1 45%;min-width:0}
@@ -451,6 +452,7 @@ details.more summary{cursor:pointer;color:var(--ink-2);font-size:.9rem;margin:.4
       <button data-open="pz"><b>Sperrgebiete</b><small id="mt-pz"></small></button>
       <button data-open="map"><b>Karte</b><small id="mt-map"></small></button>
       <button data-open="check"><b>Startcheck</b><small id="mt-check"></small></button>
+      <button data-open="planner" class="wide"><b>Startplatz-Planer</b><small>Von wo aus erreiche ich das Ziel?</small></button>
     </div>
     <h3 class="mhead">In der Fahrt</h3>
     <div class="tiles">
@@ -464,7 +466,7 @@ details.more summary{cursor:pointer;color:var(--ink-2);font-size:.9rem;margin:.4
       <button data-open="reset"><b>Fahrt-Punkte löschen</b><small>Karte für die nächste Fahrt</small></button>
     </div>
     <button class="btn" data-open="settings" style="width:100%;margin-top:1rem">Einstellungen<small id="mt-set" style="display:none"></small></button>
-    <p class="note" style="text-align:center;margin-top:.9rem">Version 2026-10-09.13</p>
+    <p class="note" style="text-align:center;margin-top:.9rem">Version 2026-10-09.14</p>
   </div>
 </div>
 
@@ -625,6 +627,17 @@ details.more summary{cursor:pointer;color:var(--ink-2);font-size:.9rem;margin:.4
   <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="pz-title">
     <h2 id="pz-title">Sperrgebiete</h2>
     <ul class="tlist" id="pzlist"></ul>
+    <h3>Leitungen und Flächen (KML)</h3>
+    <p class="note" id="ln-state" style="margin-top:0"></p>
+    <label class="checkrow"><input type="checkbox" id="ln-pz" checked> Flächen als Sperrgebiete übernehmen</label>
+    <div class="btns" style="margin-top:.4rem">
+      <label class="btn filebtn" style="flex:1">KML laden<input type="file" id="ln-file" accept=".kml,application/vnd.google-earth.kml+xml,text/xml" hidden></label>
+      <button class="btn small danger" id="ln-clear">Linien löschen</button>
+    </div>
+    <div class="row" style="margin-top:.4rem">
+      <label class="field"><span>Warnen ab Abstand m</span><input id="ln-warn" class="num" inputmode="numeric"></label>
+      <label class="field"><span>unter ft über Grund</span><input id="ln-agl" class="num" inputmode="numeric"></label>
+    </div>
     <label class="field" style="margin-top:1rem"><span>Vorwarnung</span>
       <select id="pz-look"><option value="120">2 Minuten vorher</option><option value="300">5 Minuten vorher</option><option value="600">10 Minuten vorher</option></select>
     </label>
@@ -996,6 +1009,7 @@ details.more summary{cursor:pointer;color:var(--ink-2);font-size:.9rem;margin:.4
       <label class="field"><span>Kreis zeigen</span>
         <select id="st-ringmode"><option value="inside">bis das Ziel innerhalb ist</option><option value="always">immer</option></select></label>
     </div>
+    <label class="checkrow"><input type="checkbox" id="st-look"> Karte mit Vorlauf in Fahrtrichtung (ohne aktives Ziel)</label>
     <label class="checkrow"><input type="checkbox" id="st-big"> Große Tasten für Handschuhe</label>
     <button class="btn small" id="st-install" hidden>Als App installieren</button>
     <p class="note" id="st-installnote" style="margin-top:0"></p>
@@ -1060,11 +1074,11 @@ const defaults = () => ({
               simFrom:250, simKmh:14, simAltFt:1500, simAltTarget:1500, simRate:1, theme:'auto',
               groundFt:0, fallMs:5, pzLook:300,
               climbFpm:500, sinkFpm:500, minAltFt:500, maxAltFt:5000, tolM:100,
-              lowFt:50, minFinalM:500, sinkOnly:true, importLock:true, importSym:'x', posSym:'dot', posRingM:0, posRingMode:'inside', gpsSrc:'device', serBaud:0, mapFont:1, fanOn:false, digE:4, digN:4, altOffsetFt:0, autoApproachM:3000, sound:false, big:false, windMaxAge:45 },
+              lowFt:50, minFinalM:500, sinkOnly:true, importLock:true, importSym:'x', lookAhead:true, lineWarnM:250, lineAglFt:400, posSym:'dot', posRingM:0, posRingMode:'inside', gpsSrc:'device', serBaud:0, mapFont:1, fanOn:false, digE:4, digN:4, altOffsetFt:0, autoApproachM:3000, sound:false, big:false, windMaxAge:45 },
   crew: { role:'off', status:'air' },
   targets: [], activeId: null, track: [], simPos: null,
   tasks: [], activeTaskId: null, flight: { launchFrom:'', launchTo:'' },
-  pz: [], windMeasured: {}, windManual: [], flights: [], notes: [], trackOn: false,
+  pz: [], lines: [], windMeasured: {}, windManual: [], flights: [], notes: [], trackOn: false,
   model: { on:false, choice:'auto', data:null },
   map: { has:false, w:0, h:0, a:null, b:null, cal:false, show:true, opacity:.85 }
 });
@@ -1767,11 +1781,11 @@ function draw(){
   ctx.fillStyle = colors.paper; ctx.fillRect(0, 0, W, H);
   if (replay) { updateCursorBar(false); drawMapImage(); drawGrid(); drawPz(); drawReplay(); drawNotes(replay.f.notes || [], true); drawScale(); return; }
   frame = { m, prof, t, plan:getPlan(), drop:dropFor(t, profFor(t, prof), m), th:taskHelp(activeTask(), m, prof) };
-  drawMapImage(); drawGrid(); drawPz(); drawTrack(); drawNotes(S.notes); drawAreas(); drawTargets(); drawTaskHelp(); if (S.settings.fanOn) drawFan(); drawAdvice(); drawDrop();
+  drawMapImage(); drawGrid(); drawPz(); drawLines(); drawTrack(); drawNotes(S.notes); drawAreas(); drawPlanner(); drawTargets(); drawTaskHelp(); if (S.settings.fanOn) drawFan(); drawAdvice(); drawDrop();
   drawMeasure(); drawDraft(); drawRemote(); drawBalloon(); drawScale();
-  const cur = (!view.follow || tool === 'move' || tool === 'cal' || calpadOn) && !mpad;
+  const cur = (!view.follow || tool === 'move' || tool === 'cal' || calpadOn || planner) && !mpad;
   if (cur) drawCursor();
-  updateCursorBar(cur && !tool && !calpadOn);
+  updateCursorBar((cur && !tool && !calpadOn) || planner);
 }
 function drawMapImage(){
   if (!mapImg || !mapImg.complete || !S.map.has || !S.map.show || !S.map.a) return;
@@ -2056,6 +2070,7 @@ function setTool(t){
   if (tool === 'measure') measure = { a:null, b:null };
   if (tool !== 'cal') cal = null;
   if (tool !== 'move') moveId = null;
+  planner = tool === 'planner';
   updateHint(); requestDraw();
 }
 function updateHint(){
@@ -2065,6 +2080,7 @@ function updateHint(){
   const h = $('#hint');
   if (!tool) { h.hidden = true; return; }
   h.hidden = false;
+  if (tool === 'planner') { $('#hint-done').textContent = 'Fertig'; $('#hint-cancel').hidden = true; $('#hint-text').textContent = 'Startplatz-Planer: Jede Linie zeigt, wo ein Start in dieser Höhe zum Ziel führt (Punkte nach 15, 30, 45 min). Karte verschieben, um einen Startplatz zu prüfen.'; return; }
   $('#hint-done').textContent = tool === 'cal' ? 'Punkt setzen' : tool === 'move' ? 'Hier ablegen' : 'Fertig';
   $('#hint-cancel').hidden = tool !== 'move' && tool !== 'cal';
   $('#hint-text').textContent =
@@ -2080,6 +2096,7 @@ function followCenter(){
   const t = activeTarget(), R = Math.min(W - railW(), H) * .36;
   let E = pos.E, N = pos.N;
   if (t) { const dx = t.E - pos.E, dy = t.N - pos.N, d = Math.hypot(dx, dy); if (d > 1) { const sh = Math.min(d * view.s / 2, R) / view.s; E += dx / d * sh; N += dy / d * sh; } }
+  else if (S.settings.lookAhead) { const m = motion(); if (m && m.course != null && m.gs > .4) { const sh = Math.min(W - railW(), H) * .3 / view.s; E += Math.sin(m.course * RAD) * sh; N += Math.cos(m.course * RAD) * sh; } }
   view.cx = E + railW() / 2 / view.s; view.cy = N;
 }
 function setFollow(on){
@@ -2148,7 +2165,7 @@ function onTap(x, y){
   if (tool === 'add') { setTool('add'); openTargetForm(null, { E, N }); return; }
   if (tool === 'measure') { if (!measure.a || measure.b) measure = { a:[E, N], b:null }; else measure.b = [E, N]; updateHint(); requestDraw(); return; }
   if (tool === 'pz') { pzDraft.push([E, N]); updateHint(); requestDraw(); return; }
-  if (tool === 'cal') { view.cx = E; view.cy = N; requestDraw(); return; }
+  if (tool === 'cal' || tool === 'planner') { view.cx = E; view.cy = N; requestDraw(); return; }
   const tol = S.settings.big ? 40 : 26;
   const nt = S.notes.find(n => { const [nx, ny] = w2s(n.E, n.N); return Math.hypot(nx - x, ny - y) < tol; });
   if (nt) { openNote(nt); return; }
@@ -2856,7 +2873,8 @@ function updateCursorBar(show){
   if (!show) { el.hidden = true; return; }
   el.hidden = false;
   setText('cb-code', code44(view.cx, view.cy));
-  if (pos) { const dx = view.cx - pos.E, dy = view.cy - pos.N; setText('cb-info', fmtDist(Math.hypot(dx, dy)) + ' ' + fmtDeg(bearing(dx, dy)) + ' vom Ballon'); }
+  if (planner) setText('cb-info', plannerInfo());
+  else if (pos) { const dx = view.cx - pos.E, dy = view.cy - pos.N; setText('cb-info', fmtDist(Math.hypot(dx, dy)) + ' ' + fmtDeg(bearing(dx, dy)) + ' vom Ballon'); }
   else setText('cb-info', '');
 }
 $('#cb-add').addEventListener('click', () => openTargetForm(null, { E:view.cx, N:view.cy }));
@@ -3755,12 +3773,139 @@ function updateHud(){
 }
 function updateAlert(m){
   const el = $('#alert'), st = pzStatus(m);
-  if (!st) { el.hidden = true; lastAlert = ''; return; }
+  if (!st) {
+    const ln = lineStatus(m);
+    if (!ln) { el.hidden = true; el.classList.remove('line'); lastAlert = ''; return; }
+    el.hidden = false; el.classList.add('line'); el.classList.toggle('inside', ln.d < 100);
+    el.textContent = (ln.l.name || 'Leitung') + (ln.t ? ' in ' + fmtTime(ln.t) + ' auf Kurs' : ' ' + fmtDist(ln.d) + ' entfernt') + ', du bist ' + Math.round(ln.agl) + ' ft über Grund.';
+    const key = 'ln' + ln.l.id + (ln.t ? 't' : 'n');
+    if (key !== lastAlert) { lastAlert = key; say('Achtung, Stromleitung voraus', true); try { navigator.vibrate && navigator.vibrate([250, 120, 250]); } catch (e) {} }
+    return;
+  }
+  el.classList.remove('line');
   el.hidden = false; el.classList.toggle('inside', !!st.inside);
   const ceil = st.z.ceil != null ? ' Über ' + st.z.ceil + ' ft ist es frei.' : '';
   el.textContent = st.inside ? 'Im Sperrgebiet ' + st.z.name + '!' + ceil : 'Sperrgebiet ' + st.z.name + ' in ' + fmtTime(st.t) + '.' + ceil;
   const key = st.z.id + (st.inside ? 'in' : 'near');
   if (key !== lastAlert) { lastAlert = key; say(st.inside ? 'Achtung, im Sperrgebiet ' + st.z.name : 'Achtung, Sperrgebiet ' + st.z.name + ' voraus', true); try { navigator.vibrate && navigator.vibrate(st.inside ? [300, 120, 300, 120, 300] : [250, 120, 250]); } catch (e) {} }
+}
+
+/* ---------- Leitungen aus KML ---------- */
+function segDist(px, py, ax, ay, bx, by){
+  const dx = bx - ax, dy = by - ay, L = dx * dx + dy * dy, t = L ? Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / L)) : 0;
+  return Math.hypot(px - ax - dx * t, py - ay - dy * t);
+}
+function lineDist(l, E, N){
+  if (E < l.bb[0] - 3000 || E > l.bb[2] + 3000 || N < l.bb[1] - 3000 || N > l.bb[3] + 3000) return Infinity;
+  let d = Infinity; for (let i = 1; i < l.pts.length; i++) d = Math.min(d, segDist(E, N, l.pts[i - 1][0], l.pts[i - 1][1], l.pts[i][0], l.pts[i][1])); return d;
+}
+function lineStatus(m){
+  if (!pos || !S.lines.length) return null;
+  const st = S.settings, agl = pos.altFt != null ? pos.altFt - st.groundFt : 0, R = st.lineWarnM || 250;
+  if (agl > (st.lineAglFt || 400)) return null;
+  let best = null;
+  for (const l of S.lines) { const d = lineDist(l, pos.E, pos.N); if (d < R && (!best || d < best.d)) best = { l, d, agl }; }
+  if (best) return best;
+  if (!m || m.course == null) return null;
+  for (let s2 = 15; s2 <= 120; s2 += 15) { const E = pos.E + m.u * s2, N = pos.N + m.v * s2;
+    for (const l of S.lines) { const d = lineDist(l, E, N); if (d < R * .6) return { l, d:lineDist(l, pos.E, pos.N), t:s2, agl }; } }
+  return null;
+}
+function drawLines(){
+  if (!S.lines.length) return;
+  for (const l of S.lines) {
+    if (l.pts.length < 2) continue;
+    ctx.beginPath(); l.pts.forEach((q, i) => { const [x, y] = w2s(q[0], q[1]); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); });
+    ctx.lineJoin = 'round'; ctx.strokeStyle = colors.panel; ctx.lineWidth = 6; ctx.stroke();
+    ctx.strokeStyle = '#B9520C'; ctx.lineWidth = 3; ctx.setLineDash([12, 5, 3, 5]); ctx.stroke(); ctx.setLineDash([]);
+    if (view.s > .05 && l.name) { const q = l.pts[Math.floor(l.pts.length / 2)], [x, y] = w2s(q[0], q[1]); label(l.name, x + 6, y - 6, { size:11, weight:700, color:'#B9520C' }); }
+  }
+}
+function parseKmlShapes(text){
+  const doc = new DOMParser().parseFromString(text, 'application/xml'), out = { lines:[], polys:[] };
+  const coords = el => el.textContent.trim().split(/\s+/).map(t => t.split(',').map(Number)).filter(c => isFinite(c[0]) && isFinite(c[1])).map(c => [c[1], c[0]]);
+  doc.querySelectorAll('Placemark').forEach(pm => {
+    const nm = pm.querySelector('name'), name = nm ? nm.textContent.trim().slice(0, 30) : '';
+    pm.querySelectorAll('LineString coordinates').forEach(c => { const p = coords(c); if (p.length >= 2) out.lines.push({ name, pts:p }); });
+    pm.querySelectorAll('Polygon outerBoundaryIs coordinates, Polygon > LinearRing coordinates').forEach(c => { const p = coords(c); if (p.length >= 3) out.polys.push({ name, pts:p }); });
+  });
+  return out;
+}
+function renderLines(){
+  setText('ln-state', S.lines.length ? S.lines.length + (S.lines.length === 1 ? ' Linie' : ' Linien') + ' geladen, z. B. Stromleitungen. Gewarnt wird, wenn du dich tief nähern würdest.' : 'Stromleitungen als Linien und Flächen aus einer KML-Datei, z. B. aus Google Earth oder vom Veranstalter. KMZ vorher entpacken oder als KML speichern.');
+  $('#ln-warn').value = S.settings.lineWarnM; $('#ln-agl').value = S.settings.lineAglFt;
+}
+$('#ln-file').addEventListener('change', async e => {
+  const f = e.target.files && e.target.files[0]; e.target.value = ''; if (!f) return;
+  try {
+    const k = parseKmlShapes(await f.text()), z = S.settings.zone;
+    const toU = p => p.map(([la, lo]) => { const u = ll2utm(la, lo, z); return [u.E, u.N]; });
+    let nl = 0, np = 0;
+    for (const l of k.lines) { const pts = toU(l.pts), xs = pts.map(q => q[0]), ys = pts.map(q => q[1]);
+      S.lines.push({ id:uid(), name:l.name, pts, bb:[Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)] }); nl++; }
+    if ($('#ln-pz').checked) for (const g of k.polys) { S.pz.push({ id:uid(), name:g.name || 'Fläche ' + (S.pz.length + 1), type:'poly', pts:toU(g.pts), ceil:null }); np++; }
+    save(); renderPz(); renderLines(); requestDraw();
+    setText('ln-state', nl + ' Linien und ' + np + ' Flächen übernommen.' + (!nl && !np ? ' In der Datei wurden keine Linien oder Flächen gefunden.' : ''));
+  } catch (err) { setText('ln-state', 'Die KML-Datei konnte nicht gelesen werden.'); }
+});
+$('#ln-clear').addEventListener('click', e => confirmBtn(e.currentTarget, 'Linien löschen', () => { S.lines = []; save(); renderLines(); requestDraw(); }));
+$('#ln-warn').addEventListener('change', e => { const v = numOrNull(e.target.value); if (v && v > 0) { S.settings.lineWarnM = Math.round(v); save(); } renderLines(); });
+$('#ln-agl').addEventListener('change', e => { const v = numOrNull(e.target.value); if (v != null && v >= 0) { S.settings.lineAglFt = Math.round(v); save(); } renderLines(); });
+
+/* ---------- Startplatz-Planer ---------- */
+let planner = false;
+function plannerProfile(){ return windProfile().filter(r => r.alt >= S.settings.minAltFt - 1 && r.alt <= S.settings.maxAltFt + 1); }
+function climbDrift(h, prof){
+  const st = S.settings, up = Math.max(1, st.climbFpm * .7) / 60, g = st.groundFt; let E = 0, N = 0, a = g, t = 0;
+  while (a < h) { const w = windInterp(a, prof) || [0, 0]; const dt = Math.min(15, (h - a) / up); E += w[0] * dt; N += w[1] * dt; a += up * dt; t += dt; }
+  return { E, N, t };
+}
+function plannerRays(t){
+  const prof = plannerProfile(); if (!prof.length) return [];
+  let rows = prof.slice().sort((a, b) => a.alt - b.alt);
+  if (rows.length > 10) { const k = Math.ceil(rows.length / 10); rows = rows.filter((_, i) => i % k === 0 || i === rows.length - 1); }
+  return rows.map(r => { const c = climbDrift(r.alt, prof); return { alt:r.alt, u:r.u, v:r.v, o:[t.E - c.E, t.N - c.N], climb:c.t }; }).filter(r => Math.hypot(r.u, r.v) > .3);
+}
+function evalLaunch(E, N, t){
+  const prof = plannerProfile(); if (!prof.length) return null;
+  const st = S.settings, up = Math.max(1, st.climbFpm * .7) / 60;
+  let best = null;
+  for (const r of prof) {
+    let x = E, y = N, a = st.groundFt, tt = 0, bd = Infinity, bt = 0;
+    while (tt < 5400) {
+      const w = windInterp(a, prof) || [0, 0], dt = 10; x += w[0] * dt; y += w[1] * dt; tt += dt; if (a < r.alt) a = Math.min(r.alt, a + up * dt);
+      const d = Math.hypot(t.E - x, t.N - y); if (d < bd) { bd = d; bt = tt; } else if (d > bd + 2000) break;
+    }
+    if (!best || bd < best.d) best = { alt:r.alt, d:bd, t:bt };
+  }
+  return best;
+}
+function drawPlanner(){
+  if (!planner) return;
+  const t = activeTarget(); if (!t) return;
+  const rays = plannerRays(t); if (!rays.length) return;
+  const lo = rays[0].alt, span = Math.max(1, rays[rays.length - 1].alt - lo);
+  if (S.flight.minIlp) { const [x, y] = w2s(t.E, t.N); ctx.beginPath(); ctx.arc(x, y, S.flight.minIlp * view.s, 0, 2 * Math.PI); ctx.strokeStyle = colors.pz; ctx.lineWidth = 2; ctx.setLineDash([4, 4]); ctx.stroke(); ctx.setLineDash([]); }
+  for (const r of rays) {
+    const col = 'hsl(' + Math.round(215 - 185 * (r.alt - lo) / span) + ' 70% 40%)';
+    const P = m => w2s(r.o[0] - r.u * m * 60, r.o[1] - r.v * m * 60);
+    const [x0, y0] = w2s(t.E, t.N), [x1, y1] = P(0), [x2, y2] = P(60);
+    ctx.strokeStyle = col; ctx.lineWidth = 1.5; ctx.setLineDash([3, 4]); ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke(); ctx.setLineDash([]);
+    ctx.lineWidth = 2.5; ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+    for (const m of [15, 30, 45]) { const [x, y] = P(m); dot(x, y, 3.5, col); if (view.s > .02) label(m + "'", x + 5, y - 4, { size:10, weight:700, color:col }); }
+    { const [lx, ly] = (x2 > 10 && x2 < W - 70 && y2 > 20 && y2 < H - 10) ? [x2, y2] : P(30); label(r.alt + ' ft', lx + 6, ly + 14, { size:11, weight:700, color:col }); }
+  }
+}
+function plannerInfo(){
+  const t = activeTarget(); if (!t) return 'Erst ein Ziel aktivieren.';
+  const e = evalLaunch(view.cx, view.cy, t);
+  if (!e) return 'Kein Windprofil: Wetterbericht importieren oder Modellwind laden.';
+  return 'Start hier: ' + e.alt + ' ft, vorbei ' + fmtDist(e.d) + ' nach ' + fmtTime(e.t) + (S.flight.minIlp && Math.hypot(view.cx - t.E, view.cy - t.N) < S.flight.minIlp ? ', zu nah am Ziel (ILP)' : '');
+}
+function togglePlanner(on){
+  if (on) { closeSheets(); setFollow(false); const t = activeTarget(); if (t) { view.cx = t.E; view.cy = t.N; } if (tool !== 'planner') setTool('planner'); }
+  else if (tool === 'planner') setTool('planner');
+  requestDraw();
 }
 
 /* ---------- Task Sheet und Countdown ---------- */
@@ -3875,11 +4020,12 @@ const openers = {
   tasks: () => { setText('ts-msg', ''); renderTasks(); openSheet('#sheet-tasks'); },
   list: () => { tlMsg(''); $('#tl-undo').hidden = true; $('#imp-lock').checked = !!S.settings.importLock; $('#imp-sym').value = S.settings.importSym || 'x'; renderList(); openSheet('#sheet-list'); },
   wind: () => { setText('wd-msg', ''); renderModel(); renderWind(); openSheet('#sheet-wind'); },
-  pz: () => { renderPz(); openSheet('#sheet-pz'); },
+  pz: () => { renderPz(); renderLines(); openSheet('#sheet-pz'); },
   map: () => { renderMapSheet(); openSheet('#sheet-map'); },
   log: () => { logMsg(''); renderLog(); openSheet('#sheet-log'); },
   crew: () => { renderCrew(); openSheet('#sheet-crew'); },
   brief: () => { renderBrief(); openSheet('#sheet-brief'); },
+  planner: () => { if (!activeTarget()) { closeSheets(); setStatus('Erst ein Ziel aktivieren', 'warn'); return; } togglePlanner(true); },
   reset: () => { const b = $('#rs-log'); b.textContent = 'Vorher im Logbuch speichern'; b.disabled = false; renderReset(); openSheet('#sheet-reset'); },
   check: () => { renderCheck(); openSheet('#sheet-check'); },
   settings: () => { bkMsg(''); $('#bk-apply').hidden = true; fillSettings(); installNote(); renderSerial(); openSheet('#sheet-settings'); }
@@ -4311,7 +4457,7 @@ function fillSettings(){
   $('#st-zone').value = st.zone; $('#st-zoneauto').value = st.zoneAuto ? '1' : '0';
   $('#st-ref').value = Math.round(st.refE) + '/' + Math.round(st.refN);
   $('#st-digE').value = String(st.digE || 4); $('#st-digN').value = String(st.digN || 4); digPreview();
-  $('#st-font').value = String(st.mapFont || 1);
+  $('#st-font').value = String(st.mapFont || 1); $('#st-look').checked = st.lookAhead !== false;
   $('#st-possym').value = st.posSym || 'dot'; $('#st-ring').value = st.posRingM || ''; $('#st-ringmode').value = st.posRingMode || 'inside';
   $('#st-auto').value = st.autoApproachM; $('#st-sinkonly').checked = !!st.sinkOnly;
   $('#lim-up').value = fpmToMs(st.climbFpm); $('#lim-down').value = fpmToMs(st.sinkFpm); $('#lim-min').value = st.minAltFt; $('#lim-max').value = st.maxAltFt; $('#lim-tol').value = st.tolM; $('#lim-low').value = st.lowFt; $('#lim-age').value = st.windMaxAge; $('#lim-final').value = st.minFinalM;
@@ -4335,6 +4481,7 @@ function digPreview(){
 $('#st-possym').addEventListener('change', e => { S.settings.posSym = e.target.value; save(); requestDraw(); });
 $('#st-ring').addEventListener('change', e => { const v = numOrNull(e.target.value); S.settings.posRingM = v && v > 0 ? Math.round(v) : 0; e.target.value = S.settings.posRingM || ''; save(); requestDraw(); });
 $('#st-ringmode').addEventListener('change', e => { S.settings.posRingMode = e.target.value; save(); requestDraw(); });
+$('#st-look').addEventListener('change', e => { S.settings.lookAhead = e.target.checked; save(); if (view.follow) followCenter(); requestDraw(); });
 $('#st-font').addEventListener('change', e => { S.settings.mapFont = +e.target.value; save(); requestDraw(); });
 $('#st-sinkonly').addEventListener('change', e => { S.settings.sinkOnly = e.target.checked; save(); invalidatePlan(); updateHud(); requestDraw(); });
 $('#st-big').addEventListener('change', e => { S.settings.big = e.target.checked; save(); applyBig(); });
@@ -4373,6 +4520,7 @@ document.querySelectorAll('[data-theme-set]').forEach(b => b.addEventListener('c
 $('#hint-cancel').addEventListener('click', () => setTool(tool));
 $('#hint-done').addEventListener('click', () => {
   if (tool === 'calnote') { tool = null; $('#hint').hidden = true; return; }
+  if (tool === 'planner') { togglePlanner(false); return; }
   if (tool === 'move') { const t = S.targets.find(x => x.id === moveId); if (t) { t.E = view.cx; t.N = view.cy; save(); invalidatePlan(); } setTool('move'); updateHud(); return; }
   if (tool === 'pz') { setTool('pz'); finishPzDraft(); return; }
   if (tool === 'cal') { cal.pending = worldToImg(view.cx, view.cy); openCalSheet(); return; }
