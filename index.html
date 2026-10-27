@@ -23,6 +23,8 @@
   box-sizing:border-box;
   padding-top:env(safe-area-inset-top,0px);
   padding-bottom:env(safe-area-inset-bottom,0px);
+  padding-left:env(safe-area-inset-left,0px);
+  padding-right:env(safe-area-inset-right,0px);
 }
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){
@@ -52,7 +54,7 @@ button{font:inherit;color:inherit;cursor:pointer}
   background:var(--panel);border-bottom:1px solid var(--panel-edge)}
 .grow{flex:1}
 .chip{border:1.5px solid currentColor;background:transparent;border-radius:999px;white-space:nowrap;min-width:0;overflow:hidden;text-overflow:ellipsis;flex-shrink:1;
-  padding:.2rem .65rem;font-family:var(--num);font-weight:600;font-size:.95rem}
+  padding:.2rem .65rem;font-family:var(--num);font-weight:600;font-size:.95rem;min-height:34px;min-width:44px}
 .chip[data-state="ok"]{color:var(--ok)} .chip[data-state="warn"]{color:var(--warn)}
 .chip[data-state="sim"]{color:var(--sim)} .chip[data-state=""]{color:var(--ink-2)}
 .chip.clock{color:var(--ink);font-variant-numeric:tabular-nums}
@@ -73,6 +75,8 @@ button{font:inherit;color:inherit;cursor:pointer}
 .mapwrap.calib .zoombtn{display:grid}
 :root.big .zoombtn{display:grid}
 :root.big .rail .gap{display:block}
+/* Maus am PC: ohne Zwei-Finger-Geste braucht es Zoomtasten (Mausrad geht auch) */
+@media (hover:hover) and (pointer:fine) and (min-height:520px){ .zoombtn{display:grid} .rail .gap{display:block} }
 .mapwrap.anflug #tool-add,.mapwrap.anflug #tool-measure{display:none}
 .mapwrap.replaying #tool-add,.mapwrap.replaying #tool-measure,.mapwrap.replaying #btn-view,.mapwrap.replaying #btn-note,.mapwrap.replaying #btn-track{display:none}
 #btn-track svg circle{fill:none;stroke:var(--balloon)}
@@ -137,6 +141,11 @@ button{font:inherit;color:inherit;cursor:pointer}
 .sheet{background:var(--panel);width:100%;max-width:560px;max-height:90%;overflow:auto;border-radius:18px 18px 0 0;
   padding:1rem 1rem calc(1.1rem + env(safe-area-inset-bottom,0px));animation:up .22s ease-out}
 @keyframes up{from{transform:translateY(24px);opacity:.4}to{transform:none;opacity:1}}
+/* Großer Bildschirm (PC, Tablet): Blätter als Fenster in der Mitte statt von unten */
+@media (min-width:700px) and (min-height:640px){
+  .back{align-items:center;padding:1rem}
+  .sheet{border-radius:18px;max-height:min(88vh, 900px);box-shadow:0 18px 50px rgba(0,0,0,.28)}
+}
 @media (prefers-reduced-motion:reduce){.sheet,.alert.inside{animation:none}#needle,#altneedle{transition:none}}
 .sheet h2{font-family:var(--num);font-weight:700;font-size:1.6rem;margin:.1rem 0 .8rem}
 .sheet h3{font-size:1rem;margin:1.2rem 0 .5rem;color:var(--ink-2);font-weight:600}
@@ -466,7 +475,7 @@ details.more summary{cursor:pointer;color:var(--ink-2);font-size:.9rem;margin:.4
       <button data-open="reset"><b>Fahrt-Punkte löschen</b><small>Karte für die nächste Fahrt</small></button>
     </div>
     <button class="btn" data-open="settings" style="width:100%;margin-top:1rem">Einstellungen<small id="mt-set" style="display:none"></small></button>
-    <p class="note" style="text-align:center;margin-top:.9rem">Version 2026-10-09.14</p>
+    <p class="note" style="text-align:center;margin-top:.9rem">Version 2026-10-27.1</p>
   </div>
 </div>
 
@@ -694,7 +703,7 @@ details.more summary{cursor:pointer;color:var(--ink-2);font-size:.9rem;margin:.4
         <button class="btn small danger" id="map-del">Karte entfernen</button>
       </div>
     </div>
-    <p class="note">Lade die Karte als Foto oder Bild (JPG oder PNG), bei PDF-Karten vorher einen Screenshot machen. Danach schiebst du die Karte zweimal so, dass das Kreuz auf einer Gitterkreuzung liegt, und gibst die beiden Liniennummern ein. Zum Schluss kannst du das Bild mit Pfeilen feinjustieren. Das Bild bleibt auf diesem Gerät gespeichert.</p>
+    <p class="note">Lade die Karte als Foto, Bild (JPG oder PNG) oder PDF. Ein PDF braucht beim ersten Mal Internet. Danach schiebst du die Karte zweimal so, dass das Kreuz auf einer Gitterkreuzung liegt, und gibst die beiden Liniennummern ein. Zum Schluss kannst du das Bild mit Pfeilen feinjustieren. Das Bild bleibt auf diesem Gerät gespeichert.</p>
     <div class="btns"><button class="btn" data-close>Schließen</button></div>
   </div>
 </div>
@@ -1754,14 +1763,15 @@ function resize(){
   requestDraw();
   if (window.__wfStarted) updateHud();
 }
-new ResizeObserver(resize).observe(cv);
+if (window.ResizeObserver) new ResizeObserver(resize).observe(cv);
+else { window.addEventListener('resize', resize); window.addEventListener('orientationchange', () => setTimeout(resize, 300)); }
 function readColors(){
   const cs = getComputedStyle(document.documentElement);
   ['paper','paper-2','ink','ink-2','grid','grid-major','target','target-ink','balloon','track','panel','ok','pz','sim']
     .forEach(k => colors[k] = cs.getPropertyValue('--' + k).trim());
   requestDraw();
 }
-matchMedia('(prefers-color-scheme: dark)').addEventListener('change', readColors);
+{ const mq = matchMedia('(prefers-color-scheme: dark)'); if (mq.addEventListener) mq.addEventListener('change', readColors); else if (mq.addListener) mq.addListener(readColors); }
 let drawQueued = false;
 function requestDraw(){ if (drawQueued) return; drawQueued = true; requestAnimationFrame(() => { drawQueued = false; draw(); }); }
 function seg(x1, y1, x2, y2){ ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke(); }
@@ -2093,11 +2103,13 @@ function updateHint(){
 const railW = () => S.settings.big ? 76 : 62;
 function followCenter(){
   if (!pos || replay) return;
-  const t = activeTarget(), R = Math.min(W - railW(), H) * .36;
+  /* links liegt die Höhentaste (Simulation, manuelle Höhe), rechts die Tastenleiste: Ballon in den freien Bereich legen */
+  const leftW = $('#altctl').hidden ? 0 : (S.settings.big ? 84 : 70), freeW = W - railW() - leftW;
+  const t = activeTarget(), R = Math.min(freeW, H) * .36;
   let E = pos.E, N = pos.N;
   if (t) { const dx = t.E - pos.E, dy = t.N - pos.N, d = Math.hypot(dx, dy); if (d > 1) { const sh = Math.min(d * view.s / 2, R) / view.s; E += dx / d * sh; N += dy / d * sh; } }
-  else if (S.settings.lookAhead) { const m = motion(); if (m && m.course != null && m.gs > .4) { const sh = Math.min(W - railW(), H) * .3 / view.s; E += Math.sin(m.course * RAD) * sh; N += Math.cos(m.course * RAD) * sh; } }
-  view.cx = E + railW() / 2 / view.s; view.cy = N;
+  else if (S.settings.lookAhead) { const m = motion(); if (m && m.course != null && m.gs > .4) { const sh = Math.min(freeW, H) * .3 / view.s; E += Math.sin(m.course * RAD) * sh; N += Math.cos(m.course * RAD) * sh; } }
+  view.cx = E + (railW() - leftW) / 2 / view.s; view.cy = N;
 }
 function setFollow(on){
   view.follow = on; $('#btn-follow').setAttribute('aria-pressed', on);
@@ -2376,13 +2388,6 @@ function markRule(task){
     out = out ? { ...r, ok: out.ok && ok, txt: r.txt + ', ' + out.txt } : r;
   }
   return out;
-}
-function _unused_markRule(task){
-  if (!task || !task.rules || !task.rules.length || !pos) return null;
-  const n = (task.marks || []).length, q = task.rules.find(x => x.to === n); if (!q) return null;
-  const ref = (task.marks || [])[q.from]; if (!ref) return null;
-  const d = Math.hypot(pos.E - ref.E, pos.N - ref.N), ok = (!q.min || d >= q.min) && (!q.max || d <= q.max);
-  return { q, ref, d, ok, txt:'Abstand ' + PL[q.from] + ': ' + fmtDist(d) + ' (soll ' + (q.min ? fmtDist(q.min) : '0') + (q.max ? '–' + fmtDist(q.max) : '+') + ')' + (ok ? ' ✓' : '') };
 }
 
 /* Logger-Erinnerung */
@@ -2673,17 +2678,7 @@ const logMsg = t => setText('log-msg', t);
 async function offerGpx(rec){
   if (!rec.track || rec.track.length < 2) { logMsg('Der Track ist noch zu kurz für einen Export.'); return; }
   const d = new Date(rec.date), stamp = d.getFullYear() + pad(d.getMonth() + 1, 2) + pad(d.getDate(), 2) + '-' + pad(d.getHours(), 2) + pad(d.getMinutes(), 2);
-  { saveFile('wettfahrt-' + stamp + '.gpx', buildGpx(rec), 'application/gpx+xml', logMsg); return; }
-  if (!downloads) {
-    if (window.claude) { logMsg('Speichern ist in dieser Ansicht nicht verfügbar.'); return; }
-    const url = URL.createObjectURL(new Blob([buildGpx(rec)], { type:'application/gpx+xml' })), a = document.createElement('a');
-    a.href = url; a.download = 'wettfahrt-' + stamp + '.gpx'; document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 5000); logMsg('GPX gespeichert.'); return;
-  }
-  try {
-    await downloads.save({ filename:'wettfahrt-' + stamp + '.zip', data:makeZip('wettfahrt-' + stamp + '.gpx', buildGpx(rec)) });
-    logMsg('GPX gespeichert.');
-  } catch (e) { logMsg(e && e.code === 'declined' ? 'Speichern abgebrochen.' : e && e.code === 'rate_limited' ? 'Bitte kurz warten und erneut versuchen.' : 'Speichern war nicht möglich.'); }
+  saveFile('wettfahrt-' + stamp + '.gpx', buildGpx(rec), 'application/gpx+xml', logMsg);
 }
 function currentRecord(){
   return { name:'Aktuelle Fahrt', date: S.track.length ? S.track[0][3] : Date.now(), track:S.track, targets:S.targets, tasks:S.tasks, notes:S.notes, zone:S.settings.zone };
@@ -2890,6 +2885,13 @@ async function saveFile(name, text, mime, msg){
     return;
   }
   if (window.claude) { msg('Speichern ist in dieser Ansicht nicht verfügbar.'); return; }
+  /* Installierte App auf iPhone/iPad: Herunterladen klappt dort nicht zuverlässig, daher über „Teilen“ → „In Dateien sichern“ */
+  if (isIOS() && (navigator.standalone || matchMedia('(display-mode: standalone)').matches) && window.File && navigator.canShare) {
+    try {
+      const file = new File([text], name, { type:mime });
+      if (navigator.canShare({ files:[file] })) { await navigator.share({ files:[file], title:name }); msg('Gespeichert.'); return; }
+    } catch (e) { if (e && e.name === 'AbortError') { msg('Speichern abgebrochen.'); return; } }
+  }
   const url = URL.createObjectURL(new Blob([text], { type:mime })), a = document.createElement('a');
   a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 5000); msg('Gespeichert.');
@@ -3044,7 +3046,7 @@ function checks(){
   out.push({ ok: lastAcc != null && lastAcc <= 30, txt:'GPS-Genauigkeit', sub: lastAcc != null ? '±' + Math.round(lastAcc) + ' m' + (lastAcc > 30 ? ', besser unter 30 m' : '') : 'noch kein GPS-Signal' });
   out.push({ ok: lastLon != null && zoneOf(lastLon) === st.zone, txt:'UTM-Zone ' + st.zone, sub: lastLon != null ? (zoneOf(lastLon) === st.zone ? 'passt zur Position' : 'Position liegt in Zone ' + zoneOf(lastLon)) : 'wird mit GPS geprüft' });
   const refD = pos ? Math.hypot(pos.E - st.refE, pos.N - st.refN) : null;
-  out.push({ ok: refD != null && refD < 50000, txt:'Bezugspunkt', sub: refD != null ? fmtDist(refD) + ' entfernt' : 'noch keine Position', act: pos && refD >= 50000 ? ['Übernehmen', () => { st.refE = Math.round(pos.E); st.refN = Math.round(pos.N); save(); }] : null });
+  out.push({ ok: refD != null && refD < 50000, txt:'Bezugspunkt', sub: refD != null ? (refD < 1000 ? 'unter 1 km entfernt' : Math.round(refD / 1000) + ' km entfernt') : 'noch keine Position', act: pos && refD >= 50000 ? ['Übernehmen', () => { st.refE = Math.round(pos.E); st.refN = Math.round(pos.N); save(); }] : null });
   const altOk = !!st.altCheckedAt && Date.now() - st.altCheckedAt < 12 * 3600000;
   out.push({ ok: altOk, txt:'Höhe abgeglichen', sub: altOk ? 'um ' + hhmm(st.altCheckedAt) + ', Korrektur ' + Math.round(st.altOffsetFt) + ' ft' : 'mit deinem Höhenmesser abgleichen', act: altOk ? null : ['Abgleichen', openAltSheet] });
   out.push({ ok: st.groundFt > 0 || S.targets.some(t => t.elevFt != null), txt:'Bodenhöhe', sub:'allgemein ' + st.groundFt + ' ft' + (S.targets.some(t => t.elevFt != null) ? ', bei einzelnen Zielen eigene' : ''), act:['Einstellen', openers.settings] });
@@ -3062,9 +3064,15 @@ function checks(){
   out.push({ ok: !!wakeLock, txt:'Bildschirm bleibt an', sub: wakeLock ? 'aktiv' : 'einmal antippen, falls der Browser es erlaubt', act: wakeLock ? null : ['Aktivieren', () => keepAwake().then(renderCheck)] });
   return out;
 }
+let ckKey = '', ckTouch = -1e9;
+$('#cklist').addEventListener('pointerdown', () => { ckTouch = performance.now(); });
 function renderCheck(){
-  const ul = $('#cklist'), list = checks(); ul.innerHTML = '';
+  const ul = $('#cklist'), list = checks();
   const open = list.filter(c => !c.ok).length;
+  /* nur neu aufbauen, wenn sich etwas geändert hat, sonst geht ein Fingertipp auf einen Knopf verloren */
+  const key = list.map(c => c.ok + c.txt + c.sub + (c.act ? c.act[0] : '') + (c.manual || '')).join('|');
+  if (ul.children.length && $('#sheet-check').classList.contains('open') && (key === ckKey || performance.now() - ckTouch < 800)) return open;
+  ckKey = key; ul.innerHTML = '';
   setText('ck-sum', open ? open + (open === 1 ? ' Punkt ist offen.' : ' Punkte sind offen.') : 'Alles bereit. Gute Fahrt!');
   for (const c of list) {
     const li = document.createElement('li');
@@ -3075,7 +3083,7 @@ function renderCheck(){
     li.append(ic, meta);
     let act = c.act;
     if (c.manual && !c.ok) act = ['Bestätigen', () => { ckTicks[c.manual] = true; }];
-    if (act) { const b = document.createElement('button'); b.className = 'btn small'; b.textContent = act[0]; b.addEventListener('click', () => { act[1](); setTimeout(renderCheck, 50); }); li.appendChild(b); }
+    if (act) { const b = document.createElement('button'); b.className = 'btn small'; b.textContent = act[0]; b.addEventListener('click', () => { act[1](); ckTouch = -1e9; setTimeout(renderCheck, 50); }); li.appendChild(b); }
     ul.appendChild(li);
   }
   return open;
@@ -3470,12 +3478,6 @@ function applyTaskSheet(){
   for (const z of r.pz) {
     if (z.type === 'poly') { const pts = z.pts.map(parseCoord).filter(Boolean).map(c => [c.E, c.N]); if (pts.length >= 3) { S.pz.push({ id:uid(), name:z.name, type:'poly', pts, ceil:z.ceil }); nP++; } }
     else { const c = parseCoord(z.center); if (c) { S.pz.push({ id:uid(), name:z.name, type:'circle', E:c.E, N:c.N, r:z.r, ceil:z.ceil, pts:[] }); nP++; } }
-  }
-  let nW = 0;
-  if (false) for (const w of r.wind) {
-    const alt = w.alt === 'SFC' ? st.groundFt : w.alt;
-    S.windManual = S.windManual.filter(x => Math.abs(x.alt - alt) >= 10);
-    S.windManual.push({ alt, from:((w.from % 360) + 360) % 360, kmh:Math.round(windKmh(w) * 10) / 10, t:Date.now(), src:'b' }); nW++;
   }
   S.tasks.sort((a, b) => a.nr - b.nr);
   invalidatePlan(); hwz.at = 0; save(); closeSheets(); renderTasks(); openSheet('#sheet-tasks'); requestDraw(); updateHud();
@@ -3991,7 +3993,7 @@ $('#kf-save').addEventListener('click', () => {
     dir:(v => v == null ? null : ((v % 360) + 360) % 360)(numOrNull($('#kf-dir').value)),
     targets:[...document.querySelectorAll('#kf-targets input:checked')].map(c => c.value) };
   if (editTask) Object.assign(S.tasks.find(k => k.id === editTask), data); else S.tasks.push({ id:uid(), marks:[], ...data });
-  hwz.at = 0;
+  hwz.at = 0; invalidatePlan();
   save(); renderTasks(); closeSheets(); openSheet('#sheet-tasks'); requestDraw(); updateHud();
 });
 $('#kf-del').addEventListener('click', () => {
@@ -4578,7 +4580,7 @@ function setFanUi(){ $('#btn-fan').setAttribute('aria-pressed', !!S.settings.fan
 $('#btn-fan').addEventListener('click', () => { S.settings.fanOn = !S.settings.fanOn; setFanUi(); save(); requestDraw(); });
 setFanUi();
 /* ---------- Teilen per Link / QR ---------- */
-const b64u = buf => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+const b64u = buf => { const u = new Uint8Array(buf); let s = ''; for (let i = 0; i < u.length; i += 8192) s += String.fromCharCode.apply(null, u.subarray(i, i + 8192)); return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); };
 const unb64u = str => { const b = atob(str.replace(/-/g, '+').replace(/_/g, '/')); const u = new Uint8Array(b.length); for (let i = 0; i < b.length; i++) u[i] = b.charCodeAt(i); return u; };
 async function packShare(){
   const st = S.settings, r = v => Math.round(v);
@@ -4648,7 +4650,10 @@ async function checkRecv(){
     recvData = await unpackShare(m[1]);
     setText('rv-info', 'Empfangen: ' + (recvData.t || []).length + ' Ziele, ' + (recvData.k || []).length + ' Tasks, ' + (recvData.p || []).length + ' Sperrgebiete' + ((recvData.w || []).length ? ', ' + recvData.w.length + ' Windhöhen' : '') + '. Ergänzen behält deine Daten, Ersetzen überschreibt Ziele, Tasks und Sperrgebiete.');
     closeSheets(); openSheet('#sheet-recv');
-  } catch (e) { setStatus('Link ungültig', 'warn'); }
+  } catch (e) {
+    setStatus('Link ungültig', 'warn');
+    if (m[1][0] === 'z' && !window.DecompressionStream) showLogger('Dieser Browser kann den Link nicht öffnen (zu alte Version). Bitte iOS bzw. den Browser aktualisieren oder die Daten per „Sicherung speichern“ übertragen.', true);
+  }
 }
 
 setTrackUi();

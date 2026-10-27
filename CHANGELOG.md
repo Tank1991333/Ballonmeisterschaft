@@ -12,3 +12,4 @@
 | 2026-10-09.11–.12 | Positionssymbole, Kreis um die eigene Position (sichtbar, bis das Ziel innerhalb ist) |
 | 2026-10-09.13 | Querformat 70/30 |
 | 2026-10-09.14 | Startplatz-Planer, Stromleitungen und Flächen aus KML, Karte mit Vorlauf |
+| 2026-10-27.1 | Prüfung auf Handy, Tablet und PC: Start auf iPhones mit iOS 13 repariert, Startcheck-Knöpfe reagieren zuverlässig, Ballon nicht mehr hinter der Höhentaste, Zoomtasten am PC, Fenster am großen Bildschirm mittig, Rand bei Notch im Querformat, Speichern in der installierten iPhone-App über „Teilen“, Teilen-Link auch mit vielen Daten, Plan rechnet nach Task-Änderung neu |
