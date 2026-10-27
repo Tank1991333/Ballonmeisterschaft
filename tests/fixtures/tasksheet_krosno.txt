@@ -1,0 +1,63 @@
+26th FAI World Hot Air Balloon Championship
+Krosno / Poland
+Launch area individual launch PZs in force all active
+Launch period 06:21-06:45 Solo flight not required
+Task Data Sheet
+Sunrise / Sunset 06:21 / 18:26 QNH 1019
+Flight 4 24/09/2026
+Tasks #12, #13, #14, #15, #16, #17 Min. ILP → goals 2km Next briefing 15:00
+12 HWZ Hesitation Waltz Rule 15.3 in any order
+POSITION OF GOAL/TARGET MMA R30 m
+Goal A 212 4492/0389 · 955 ft Marker color any
+Goal B 164 4998/0458 · 935 ft Marker drop gravity
+Goal C 166 4461/0873 · 801 ft Loggermarker 1
+NOTES
+Scoring period ends at 07:30:00 Scoring area: entire contest area
+13 XDD Maximum Distance Double Drop Rule 15.18 in any order
+POSITION OF GOAL/TARGET MMA -
+Goal 5309/0372 · 912 ft Marker color red · white
+Marker drop free
+a. Description of scoring area(s) grey area including the target
+NOTES
+Scoring period ends at 08:15:00 Scoring area: see sketch
+14 HWZ Hesitation Waltz Rule 15.3 in any order
+POSITION OF GOAL/TARGET MMA R20 m
+Goal A 5894/0253 · 902 ft Marker color any
+Goal B 5924/0067 · 961 ft Marker drop gravity
+Loggermarker 2
+NOTES
+Scoring period ends at 08:30:00 Scoring area: entire contest area
+15 HWZ Hesitation Waltz Rule 15.3 in any order
+POSITION OF GOAL/TARGET MMA R30 m
+Goal A 183 6333/9856 · 948 ft Marker color any
+Goal B 238 6301/0095 · 922 ft Marker drop gravity
+Loggermarker 3
+NOTES
+Scoring period ends at 08:30:00 Scoring area: entire contest area
+16 FON Fly On Rule 15.5 in any order
+MMA -
+a. Method of declaration Loggergoal #1 max. 2 valid declarations in flight
+Marker color -
+b. Number of goals permitted 1
+Marker drop -
+c. Goals available for declaration any coordinate with altitude, at least 2000ft Loggermarker 4
+e. Minimum and maximum distance min. 2km, no max. Loggergoal 1
+between declaration point and declared
+goal(s)
+The result is the ratio of the 3D-distance (in m) from
+the mark to the declared goal divided by the distance
+(in km) between the declaration point and the goal.
+NOTES
+Scoring period ends at 09:00:00 Scoring area: entire contest area
+17 ELB Elbow Rule 15.11 in any order
+MMA -
+a. Description of track point "A" Loggermarker #5
+Marker color -
+b. Description of track point "B" Loggermarker #6, between point A and C, min 3km
+Marker drop -
+and max 5km from Point A
+Loggermarker 5, 6, 7
+c. Description of track point "C" Loggermarker #7, min 3km and max 5km from Point B
+NOTES
+Scoring period ends at 09:00:00 Scoring area: entire contest area
+24/09/2026, 04:35:25 ✦ created with NTA Competition

@@ -1,0 +1,14 @@
+# Versionsverlauf (Kurzfassung)
+
+| Version | Änderungen |
+| --- | --- |
+| 2026-10-07 | Grundversion: Gitterkarte, Ziele, Höhenplan, Abwurf, Task Sheet, Sperrgebiete, Logbuch, Verfolger, Ansagen, Startcheck, Simulation |
+| 2026-10-08 | Task-Sheet- und Wetter-Import, Stellen der Koordinaten, Offline/PWA, Erststart-Frage, manuelle Höhe, Track-Taste, Task-Kennung an Zielen, einfachere Kalibrierung, Update-Hinweis |
+| 2026-10-09 | Menü nach Ablauf, Einstellungen in Abschnitten, Variometer, Windfächer, Logger-Erinnerung, Deklarationsprüfung, Kreise mit Farben, Zielfarben, Kartenschrift |
+| 2026-10-09.3 | Modellwind ICON-D2/ICON-EU |
+| 2026-10-09.4–.5 | Mehr Task-Sheet-Daten, viele Formate (EN/DE/PT, NTA), CRT-Fenster, Zeitregeln, Donut, Wertungsflächen |
+| 2026-10-09.6–.9 | Pfeilfeld-Schritte (jetzt 1/10/100 m), externes GPS über USB, PDF-Karte, IGC-Import, Teilen per Link/QR |
+| 2026-10-09.10 | Kalibrieren in Originalgröße, Lupe/Ganze Karte |
+| 2026-10-09.11–.12 | Positionssymbole, Kreis um die eigene Position (sichtbar, bis das Ziel innerhalb ist) |
+| 2026-10-09.13 | Querformat 70/30 |
+| 2026-10-09.14 | Startplatz-Planer, Stromleitungen und Flächen aus KML, Karte mit Vorlauf |

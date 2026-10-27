@@ -1,0 +1,59 @@
+8º Campeonato Torrense de Balonismo
+T A S K D A T A S H E E T
+Flight 2 Date 10/3/2026 Tasks 4, 5, 6, 7 and 8
+Launch area Individual Sunrise/Sunset 05:58 - 18:28
+Minimum distance from ILP to all
+Launch period Após o nascer do sol 1 KM
+goals
+PZs in force Todos Next briefing 05:00
+Solo flight Não QNH -
+4 TASK PDG Pilot Declared Goal Rule 15.1 TASK ORDER Sem ordem
+a. Method of declaration Enviar para o whats Lasier antes da decolagem - 51982174932 MMA -
+b. Number of goals permitted 1
+Marker color -
+c. Goals available for declaration Qualquer coordenada 4/4 e altitude em pés do mapa de
+competição Marker drop -
+d. Minimum and maximum distances between 1 km
+Logger marker
+declaration point and declared goal
+e. Minimum distance of goal(s) from any goal set 500 m
+by the director
+Scoring period Até as 8:15:00 Scoring area Todo mapa de competição
+5 TASK CRT Calculated Rate of Approach Task Rule 15.9 TASK ORDER Sem Ordem
+a. Position of goal/target 1851/5619 - REFIL MMA 50 m
+b. Description of scoring area(s) and their validity Alvo válido nos seguintes horários:
+qualquer
+times Marker color
+00:00:00 a 00:14:59 cor
+00:20:00 a 00:34:59 Marker drop livre
+00:40:00 a 00:54:59
+Logger marker -
+O tecido do alvo vale a qualquer momento.
+Scoring period Até as 8:30:00 Scoring area Todo mapa de competição
+6 TASK HWZ Hesitation Waltz Rule 15.3 TASK ORDER sem ordem
+a. Position of various set goals/targets A: 1852/5450 MMA -
+B: 1914/5463
+Marker color -
+Marker drop -
+Logger marker -
+Scoring period Até 8:30:00 Scoring area Todo o mapa de competição
+7 TASK JDG Judge Declared Goal Rule 15.2 TASK ORDER sem ordem
+a. Position of set goal/target 1938/5285 - Graco MMA 50 m
+Marker color qualquer
+Marker drop livre
+Logger marker -
+Scoring period Até 8:45:00 Scoring area Todo mapa de competição
+8 TASK XDD Maximum Distance Double Drop Rule 15.18 TASK ORDER
+a. Description of scoring area(s) Ponto A: melhor resultado na tarefa 5 MMA
+Ponto B: melhor resultado na tarefa 7
+Marker color
+A distância entre os alvos das Tarefas 5 e 7 é de 3.400 metros. Marker drop
+O resultado desta tarefa será calculado pela distância entre os Logger marker
+dois alvos menos a soma das distâncias obtidas pelo piloto
+nas Tarefas 5 e 7.
+Resultado = distância entre os alvos − (resultado da Tarefa 5 +
+resultado da Tarefa 7)
+Portanto, quanto menores forem os resultados nas Tarefas 5 e
+7, maior será o resultado nesta tarefa. O maior resultado é o
+melhor.
+Scoring period Scoring area Todo o mapa de competição

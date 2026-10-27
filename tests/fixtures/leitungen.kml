@@ -1,0 +1,4 @@
+<?xml version="1.0"?><kml xmlns="http://www.opengis.net/kml/2.2"><Document>
+<Placemark><name>110 kV</name><LineString><coordinates>9.0085,49.63 9.0085,49.68</coordinates></LineString></Placemark>
+<Placemark><name>Naturschutz</name><Polygon><outerBoundaryIs><LinearRing><coordinates>9.02,49.61 9.03,49.61 9.03,49.615 9.02,49.615 9.02,49.61</coordinates></LinearRing></outerBoundaryIs></Polygon></Placemark>
+</Document></kml>

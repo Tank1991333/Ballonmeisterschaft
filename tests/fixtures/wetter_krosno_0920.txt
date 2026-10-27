@@ -1,0 +1,37 @@
+th
+26 FAI WORLD HOT AIR BALLOON CHAMPIONSHIPS
+Forecast period: 02.05.2026, from 06.15 to 08.30 LT
+General synoptic situation:
+On the periphery of high with centre 1026 hPa
+over Romania.
+Weather: -
+WIND [going from, speed in kts] TRUE
+Forecast
+REMARKS
+06.15 LT 08.30 LT
+Height
+[ftAMSL] from speed [kts] from speed [kts] Due to the hilly terrain, the
+direction of the surface wind may
+7000 255 18 255 18
+initially range from 100 to 210.
+6000 255 16 255 16 Later it will be mainly 170-190.
+5000 275 16 275 16
+4000 280 12 275 12
+3000 260 10 255 10
+2300 245 12 235 12
+1800 230 12 225 14
+1400 200 10 205 12
+1250 150 8 170 10
+1100 130 7 150 7
+GND 110-140 2-5 170-190 5-8
+Start of thermals: after 8.30 LT
+Temperature (°C): from 10 to 14
+FZLVL: (ft AMSL): 12000
+QNH: 1023 hPa Tendency: no changes
+Visibility: above 10 km
+Inversion: from GND to 1700 ft AMSL (6°C),
+start disappearing after 8.00 LT
+CLOUD [ft AMSL]
+Cover and Type Base Top
+FEW/SCT Ac Ci 9000
+Issue: 04.15 LT, 20.09.2026, Iwona Lelątko

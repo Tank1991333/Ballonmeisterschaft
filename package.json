@@ -1,0 +1,14 @@
+{
+  "name": "wettfahrt",
+  "version": "2026.10.9-14",
+  "private": true,
+  "description": "Navigationshilfe für Heißluftballon-Wettbewerbe (Web-App, eine Datei)",
+  "scripts": {
+    "start": "python3 -m http.server 8080",
+    "check": "bash tests/check.sh",
+    "pdftext": "node tests/extract-pdf-text.mjs"
+  },
+  "devDependencies": {
+    "pdfjs-dist": "^4.10.38"
+  }
+}

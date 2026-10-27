@@ -1,0 +1,36 @@
+th
+26 FAI WORLD HOT AIR BALLOON CHAMPIONSHIPS
+Forecast period: 24.09.2026, from 06.15 to 08.30 LT
+General synoptic situation:
+Weak ridge of high pressure over southern
+Poland is moving east slowly.
+Weather: at first risk of FG locally in
+valley
+WIND [going from, speed in kts] TRUE
+Forecast
+REMARKS
+06.15 LT 08.30 LT
+Height
+[ftAMSL] from speed [kts] from speed [kts]
+7000 310 18 310 17
+6000 315 18 315 17
+5000 315 18 310 17
+4000 320 18 305 16
+3000 310 21 295 19
+2300 300 21 280 18
+1800 290 21 275 18
+1400 290 15 275 12
+1250 290 10 270 8
+1100 285 8 265 7
+GND 280 4 250 5
+Start of thermals: after 9 LT
+Temperature (°C): from 7 to 10
+FZLVL: (ft AMSL): 5500
+QNH: 1019 hPa Tendency: down (0.5 hPa)
+Visibility: above 10 km
+Inversion: from GND to 1900 ft AMSL (2.5°C) start
+disappearing after 8.30 LT
+CLOUD [ft AMSL]
+Cover and Type Base Top
+SCT – FEW Sc 3000 - 5000 6000 - 7000
+Issue: 04.14 LT, 24.09.2026, Iwona Lelątko

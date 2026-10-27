@@ -1,0 +1,60 @@
+Slovak Balloon Cup 2026
+Veľká Lomnica, Slovakia
+Launch area individual launch PZs in force all active
+Launch period 06:12 - 06:45 Solo flight not required
+Task Data Sheet
+Sunrise / Sunset 06:12 / 18:56 QNH 1021
+Flight 5 14/09/2026
+Tasks #18, #19, #20, #21, #22 Min. ILP → goals 1km Next briefing 16:00
+18 PDG Pilot Declared Goal Rule 15.1 in any order
+MMA -
+a. Method of declaration Loggergoal #1
+Marker color -
+b. Number of goals permitted 1
+Marker drop -
+c. Goals available for declaration any valid coordinate with altitude Loggermarker 1
+d. Minimum and maximum distances min. 2km, max. no Loggergoal 1
+between declaration point and declared
+goal(s)
+e. Minimum distance of goal(s) from any min. 500m, max. no
+goal set by the director
+NOTES
+Scoring period ends at 07:30:00 Scoring area: entire contest area
+19 FIN Fly In Rule 15.4 in any order
+POSITION OF GOAL/TARGET MMA R30 m
+Goal 5513/4239 · 2185 ft Marker color any
+Marker drop gravity
+Loggermarker 2
+NOTES
+Scoring period ends at 07:45:00 Scoring area: entire contest area
+20 MDD Minimum Distance Double Drop Rule 15.15 in any order
+POSITION OF GOAL/TARGET MMA R30 m
+Goal 5525/4108 · 2067 ft Marker color blue · orange
+Marker drop free
+a. Description of scoring area(s) markers must be in A-A or B-B for a valid result
+B A
+A B
+NOTES
+Scoring period ends at 08:15:00 Scoring area: MMA
+21 JDG Judge Declared Goal Rule 15.2 in any order
+POSITION OF GOAL/TARGET MMA R30 m
+Goal 5530/3643 · 2270 ft Marker color any
+Marker drop gravity
+Loggermarker 3
+NOTES
+Scoring period ends at 08:45:00 Scoring area: entire contest area
+22 3DT 3D Shape Task Rule 15.20 in any order
+MMA -
+3D shape: Donut Inner radius 1000 m · Outer radius 2000 m
+Marker color -
+inner 1 kminner 1 km Marker drop -
+Loggergoal 2
+Scoring airspace is between the two cylinders.
+outer 2 kmouter 2 km
+Centre: pilot declared
+a. Description of set airspaces inner circle 1km / outer circle 2km; centre pilot-
+declared in loggergoal #2, min 3km between
+declaration point and declaration
+NOTES
+Scoring period ends at 09:15:00 Scoring area: see sketch
+14/09/2026, 03:56:13 ✦ created with NTA Competition

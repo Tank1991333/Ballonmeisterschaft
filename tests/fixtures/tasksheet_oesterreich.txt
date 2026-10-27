@@ -1,0 +1,60 @@
+44. Austrian National and 31. Styrian Hot Air Balloon Championship 2026
+Puch bei Weiz / Austria
+Launch area CLA1 PZs in force all active
+Launch period green flag + 30m Solo flight not required
+Task Data Sheet
+Sunrise / Sunset 05:46 / 20:22 QNH 1016
+Flight 2 06/08/2026
+Tasks #4, #5, #6, #7, #8 Min. ILP → goals - Next briefing 17:30
+4 PDG Pilot Declared Goal Rule 15.1 in order
+MMA -
+a. Method of declaration Loggergoal #1
+Marker color -
+b. Number of goals permitted 1
+Marker drop -
+c. Goals available for declaration any valid coordinate with altitude Loggermarker 1
+d. Minimum and maximum distances min. 2km, max. no Loggergoal 1
+between declaration point and declared
+goal(s)
+e. Minimum distance of goal(s) from any min. 500m, max. no
+goal set by the director
+Your declaration must be done before the green flag.
+NOTES
+Scoring period ends at 07:30:00 Scoring area: entire contest area
+5 CRT Calculated Rate of Approach Rule 15.9 in order
+POSITION OF GOAL/TARGET MMA R30 m
+Goal 5372/2611 · 1260 ft Marker color orange
+Marker drop free
+a. Description of scoring area(s) and their Scoring by physical marker inside the grey area (MMA
+validity times excluding target) is only possible from xx:00:00 to Loggermarker 2
+xx:15:00 and xx:30:00 to xx:45:00. Scoring by physical
+marker on the target is possible anytime within
+scoring period. Scoring by loggermarker inside entire
+contest area is possible anytime within scoring period.
+NOTES
+Scoring period ends at 08:00:00 Scoring area: entire contest area
+6 JDG Judge Declared Goal Rule 15.2 in order
+POSITION OF GOAL/TARGET MMA R30 m
+Goal 5391/2525 · 1617 ft Marker color blue
+Marker drop gravity
+Loggermarker 3
+NOTES
+Scoring period ends at 08:15:00 Scoring area: entire contest area
+7 HWZ Hesitation Waltz Rule 15.3 in order
+POSITION OF GOAL/TARGET MMA R30 m
+Goal A 5188/2349 Marker color green
+Goal B 5116/2244 Marker drop free
+Goal C 5129/2150 Loggermarker 4
+NOTES
+Scoring period ends at 08:30:00 Scoring area: entire contest area
+8 LRN Land Run Rule 15.12 in order
+MMA -
+a. Location of point "A" Loggermarker #5
+Marker color -
+b. Method of determining point "B" Loggermarker #6, after point A and before point C
+Marker drop -
+c. Method of determining point "C" Loggermarker #7, latest 40 minutes after point A Loggermarker 5, 6, 7
+d. Description of scoring area(s) entire contest area
+NOTES
+Scoring period ends at 09:00:00 Scoring area: entire contest area
+06/08/2026, 04:02:11 ✦ created with NTA Competition

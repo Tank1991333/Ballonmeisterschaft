@@ -1,0 +1,77 @@
+Task data sheet
+Flight 6 AM
+Date 03/10/2026
+Tasks #24, #25, #26, #27, #28
+Launch area Individual launch Sunrise 07:12
+Launch period 07:15 - 08:15 Min. ILP → all goals 500m
+PZs in force all active Next briefing 2027 (Will be, or not will
+be?) :)
+Solo flight not required QNH 1028 hPa
+Task 24 PDG Pilot Declared Goal (Rule 15.1) Task order in any order
+a. Method of declaration In Loggergoal #1, before take off
+b. Number of goals permitted 1
+c. Goals available for declaration any valid coordinates with altitude.
+d. Minimum and maximum distances between min 1 km, no max
+declaration point and declared goal
+e. Minimum distance of goal(s) from any goal min 1 km, no max
+set by the director
+MMA -
+Marker color -
+Marker drop -
+Scoring period ends at 10:00
+Scoring area entire contest area Loggermarker 1
+Task 25 JDG Judge Declared Goal (Rule 15.2) Task order in any order
+a. Position of set goal/target 3365/0288 ALT 840 ft AMSL
+MMA R50m
+Marker color Yellow
+Marker drop free
+Scoring period ends at 09:15
+Scoring area entire contest area Loggermarker 2
+Task 26 MDD Minimum Distance Double Drop (Rule 15.15) Task order in any order
+a. Description of scoring area(s) Goal coordinates - 3171 / 0183
+Markers must be dropped in A-A or B-B.
+MMA R50m
+Marker color Orange, Blue
+Marker drop free
+Scoring period ends at 09:45
+Scoring area MMA Loggermarker -
+Task 27 XDD Maximum Distance Double Drop (Rule 15.18) Task order in any order - split
+a. Description of scoring area(s) SA for loggermarks is SA inside of the square area with
+the corners on the coordinates:
+3050/0100, 3050/0000, 2880/0100, 2880/0000
+and MMA for physical mark is the circles with R50m and
+center points on coordinates 3114/0121 and 2827/0008.
+You are allowed to drop:
+2 x loggermarks inside square SA
+or
+1 x loggermark inside square area + physical marker
+drop inside of one MMA
+or
+2 x Physical markers drops in MMAs
+ATTENTION!
+2 x loggermark + physical marker drop or 2 x physical
+markers and loggermark in SA – no result!
+The result :
+1. Distance between 2 x loggermark,
+or
+2. Distance between loggermark and goal, minus [–]
+result of physical marker drop.
+3. Distance between two goals minus [-] results of
+physical markers drops.
+MMA R50m
+Marker color red, white
+Marker drop free
+Scoring period ends at 09:45
+Scoring area see description Loggermarker 3, 4
+Task 28 MDT Minimum Distance (Rule 15.13) Task order in any order
+a. Arrangements of timing The times will start from the moment that Loggermark #5
+is marked.
+b. Minimum set time or distance min 7 min.
+c. Reference point Loggermark #5
+The result is the distance between Loggermark #5 and
+first valid trakpoint after 7 min flight.
+MMA -
+Marker color -
+Marker drop -
+Scoring period ends at 10:00
+Scoring area entire contest area Loggermarker 5
