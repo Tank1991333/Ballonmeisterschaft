@@ -219,6 +219,13 @@ input[type=range]{padding:0;border:0;background:none;accent-color:var(--ink)}
 .stepper button{flex:0 0 46px;border:1.5px solid var(--panel-edge);background:var(--paper-2);border-radius:9px;font-size:1.35rem;font-weight:700;padding:0}
 .stepper input{text-align:center;min-width:0}
 .calpad .mp-btns .btn{font-size:.82rem}
+.help details{border-bottom:1px solid var(--panel-edge);padding:.15rem 0}
+.help summary{cursor:pointer;font-weight:600;padding:.6rem 0;min-height:44px;display:flex;align-items:center}
+.help summary{list-style:none}.help summary::-webkit-details-marker{display:none}
+.help summary::before{content:'▸';display:inline-block;width:1.2rem;color:var(--ink-2)}
+.help details[open]>summary::before{content:'▾'}
+.help ul,.help ol{margin:.1rem 0 .7rem;padding-left:1.2rem;line-height:1.45}
+.help li{margin:.3rem 0}
 details.more summary{cursor:pointer;color:var(--ink-2);font-size:.9rem;margin:.4rem 0}
 .gpsbar{display:flex;align-items:center;gap:.6rem;background:var(--panel);border:1.5px solid var(--warn);border-left:5px solid var(--warn);border-radius:12px;padding:.5rem .5rem .5rem .75rem;font-size:.92rem;line-height:1.3}
 .gpsbar.wait{border-color:var(--panel-edge);border-left-color:var(--ink-2)}
@@ -335,6 +342,7 @@ details.more summary{cursor:pointer;color:var(--ink-2);font-size:.9rem;margin:.4
   window.addEventListener('beforeinstallprompt', function(e){ e.preventDefault(); window.__wfInstall = e; var b = document.getElementById('st-install'); if (b) b.hidden = false; });
   document.getElementById('fatal-reset').onclick = function(){
     if (!confirm('Alle gespeicherten Ziele, Tasks und Einstellungen auf diesem Gerät löschen?')) return;
+    window.__wfNoSave = true;
     try { localStorage.removeItem('wettfahrt-v1'); } catch (e) {}
     try { indexedDB.deleteDatabase('wettfahrt'); } catch (e) {}
     location.reload();
@@ -474,8 +482,11 @@ details.more summary{cursor:pointer;color:var(--ink-2);font-size:.9rem;margin:.4
       <button data-open="log"><b>Logbuch</b><small id="mt-log"></small></button>
       <button data-open="reset"><b>Fahrt-Punkte löschen</b><small>Karte für die nächste Fahrt</small></button>
     </div>
-    <button class="btn" data-open="settings" style="width:100%;margin-top:1rem">Einstellungen<small id="mt-set" style="display:none"></small></button>
-    <p class="note" style="text-align:center;margin-top:.9rem">Version 2026-10-30.1</p>
+    <div class="btns" style="margin-top:1rem">
+      <button class="btn" data-open="settings" style="flex:1">Einstellungen<small id="mt-set" style="display:none"></small></button>
+      <button class="btn" data-open="help" style="flex:1">Hilfe</button>
+    </div>
+    <p class="note" style="text-align:center;margin-top:.9rem">Version 2026-10-30.2</p>
   </div>
 </div>
 
@@ -739,6 +750,8 @@ details.more summary{cursor:pointer;color:var(--ink-2);font-size:.9rem;margin:.4
     <p class="note" id="ti-file-name"></p>
     <label class="field"><span>Oder Text einfügen</span><textarea id="ti-text" placeholder="Text hier einfügen"></textarea></label>
     <button class="btn" id="ti-parse" style="width:100%">Auslesen</button>
+    <label class="field" id="ti-wxat-f" hidden style="margin-top:.6rem"><span>Wind gilt für Uhrzeit</span><input type="time" id="ti-wxat">
+      <small id="ti-wxat-note">Der Wetterbericht hat mehrere Vorhersagezeiten. Die App rechnet den Wind auf diese Uhrzeit um.</small></label>
     <div id="ti-preview" style="margin-top:.6rem"></div>
     <div id="ti-tsopts">
       <label class="checkrow" style="margin-top:.6rem"><input type="checkbox" id="ti-replace" checked> Bisheriges Task Sheet ersetzen</label>
@@ -950,6 +963,96 @@ details.more summary{cursor:pointer;color:var(--ink-2);font-size:.9rem;margin:.4
   </div>
 </div>
 
+<!-- Hilfe -->
+<div class="back" id="sheet-help">
+  <div class="sheet help" role="dialog" aria-modal="true" aria-labelledby="hp-title">
+    <h2 id="hp-title">Hilfe</h2>
+    <p class="note" style="margin-top:0">Kurzanleitung. Tippe auf einen Abschnitt, um ihn aufzuklappen. Die App ist eine Navigationshilfe und ersetzt nicht den offiziellen Logger.</p>
+    <details><summary>Erste Schritte</summary>
+      <ol>
+        <li><b>Einstellungen → Gebiet:</b> UTM-Zone und Bezugspunkt passend zur Wettbewerbskarte. Der Bezugspunkt sorgt dafür, dass kurze Koordinaten wie 1234/5678 richtig zugeordnet werden.</li>
+        <li><b>Einstellungen → Ballon:</b> Steig- und Sinkrate, Mindest- und Höchsthöhe, Fallgeschwindigkeit des Markers, Bodenhöhe.</li>
+        <li><b>Positionsquelle:</b> „GPS“ für die echte Fahrt, „Simulation“ zum Üben. In der Simulation steuerst du die Höhe mit ▲/▼ links unten.</li>
+        <li><b>Als App installieren:</b> iPhone: in Safari Teilen → „Zum Home-Bildschirm“. Android: Browser-Menü → „App installieren“. Danach läuft sie auch ohne Netz.</li>
+      </ol>
+    </details>
+    <details><summary>Vor der Fahrt</summary>
+      <ul>
+        <li><b>Briefing importieren:</b> erst das Task Sheet, dann den Wetterbericht, als PDF, Text oder eingefügter Text. Die Vorschau immer prüfen, bevor du „Übernehmen“ tippst.</li>
+        <li><b>Wind-Uhrzeit:</b> Hat der Wetterbericht mehrere Vorhersagezeiten, zeigt die Vorschau das Feld „Wind gilt für Uhrzeit“. Trag die Uhrzeit deiner Fahrt ein.</li>
+        <li><b>Ziele:</b> per Koordinate (4/4, 5/5 oder 6/7), auf der Karte („Ziel hier“) oder als Datei (GPX, KML, CSV). Gesperrte Ziele lassen sich nicht versehentlich verschieben.</li>
+        <li><b>Sperrgebiete:</b> als Kreis oder Fläche eintragen oder auf der Karte antippen. Stromleitungen und Flächen kommen aus einer KML-Datei.</li>
+        <li><b>Wettbewerbskarte:</b> Bild oder PDF laden, an zwei Gitterkreuzungen kalibrieren, danach mit den Pfeilen feinjustieren.</li>
+        <li><b>Startplatz-Planer:</b> zeigt, von wo aus ein Start in welcher Höhe zum aktiven Ziel führt. Karte verschieben, unten steht die Bewertung des Startplatzes.</li>
+        <li><b>Startcheck:</b> zeigt, was noch fehlt (GPS, Höhenabgleich, Task Sheet, Wind …).</li>
+      </ul>
+    </details>
+    <details><summary>Karte bedienen</summary>
+      <ul>
+        <li><b>Verschieben:</b> mit einem Finger oder der Maus ziehen. <b>Zoomen:</b> zwei Finger, Mausrad oder die Tasten + und − (am PC).</li>
+        <li><b>Ziel antippen:</b> macht es aktiv und öffnet das Pfeilfeld zum Verschieben in Schritten von 1, 10 oder 100 m.</li>
+        <li><b>Ziel lange drücken und ziehen:</b> verschiebt ein nicht gesperrtes Ziel direkt.</li>
+        <li><b>Nach dem Verschieben</b> erscheint das Kreuz in der Mitte mit Koordinate und „Ziel hier“.</li>
+      </ul>
+    </details>
+    <details><summary>Tasten rechts auf der Karte</summary>
+      <ul>
+        <li><b>Fadenkreuz:</b> Karte folgt wieder dem Ballon.</li>
+        <li><b>Roter Kreis:</b> Track starten oder beenden. Beim Beenden kannst du die Fahrt gleich im Logbuch speichern.</li>
+        <li><b>Stecknadel:</b> Markierung an der aktuellen Position mit Notiz.</li>
+        <li><b>Fächer:</b> Windfächer, Linien für 15 und 30 min je Höhe.</li>
+        <li><b>Plan/Anflug:</b> wechselt die Ansicht. Nahe am Ziel schaltet die App von selbst auf „Anflug“.</li>
+      </ul>
+    </details>
+    <details><summary>Anzeigen in der Fahrt</summary>
+      <ul>
+        <li><b>Große Zahl:</b> Entfernung zum aktiven Ziel, darunter Peilung und Kurs (Gitter-Nord).</li>
+        <li><b>Kompass:</b> gelber Pfeil zeigt zum Ziel relativ zu deinem Kurs, „R 12°“ heißt 12° rechts. Grüner Strich: Richtung des Höhenplans.</li>
+        <li><b>Vorbeiflug:</b> wie nah du bei gleichem Kurs am Ziel vorbeikommst.</li>
+        <li><b>Höhe:</b> antippen, um mit dem Höhenmesser abzugleichen.</li>
+        <li><b>Höhenplan:</b> welche Höhe dich zum Ziel bringt, mit Wechselzeitpunkt. Antippen öffnet den Fahrplan mit allen Schritten.</li>
+        <li><b>Markerabwurf:</b> wann du abwerfen musst und wie nah der Marker voraussichtlich landet.</li>
+        <li><b>Rote Leiste oben:</b> Warnung vor Sperrgebiet oder Stromleitung. Ansagen und Vibration lassen sich mit dem Lautsprecher-Symbol einschalten.</li>
+      </ul>
+    </details>
+    <details><summary>Tasks fliegen</summary>
+      <ul>
+        <li>Im Menü „Tasks“ einen Task auf „Fliegen“ stellen. Die Leiste unten zeigt dann die passende Hilfe, z. B. Winkel bei Elbow, Fläche bei Land Run, Fenster bei CRT.</li>
+        <li><b>Marker gesetzt:</b> tippen, sobald du einen Marker abgeworfen hast. Die App prüft Abstands- und Zeitregeln aus dem Task Sheet.</li>
+        <li><b>Deklarieren:</b> bei PDG und Fly On. Die App warnt bei zu kleinem Abstand oder fehlender Höhe und erinnert an den Loggergoal.</li>
+      </ul>
+    </details>
+    <details><summary>Wind</summary>
+      <ul>
+        <li>Die App misst den Wind in jeder Höhe, durch die du fährst. Dazu kommen Pibal-Werte, Briefing-Wind („B“) und auf Wunsch der Modellwind (DWD ICON).</li>
+        <li>Gemessene Werte haben Vorrang. Werte älter als die eingestellte Zeit werden nicht mehr verwendet.</li>
+        <li>In der Windtabelle zeigt „Vorbei“, wie nah du am Ziel vorbeikommst, wenn du auf dieser Höhe bleibst.</li>
+      </ul>
+    </details>
+    <details><summary>Nach der Fahrt</summary>
+      <ul>
+        <li><b>Logbuch:</b> Fahrt speichern, als GPX exportieren oder ansehen. Eine Logger-Datei (IGC) lässt sich laden und mit der eigenen Fahrt vergleichen.</li>
+        <li><b>Fahrt-Punkte löschen:</b> räumt ungesperrte Ziele, Track und Marker für die nächste Fahrt weg.</li>
+      </ul>
+    </details>
+    <details><summary>Daten sichern und teilen</summary>
+      <ul>
+        <li><b>Sicherung speichern</b> (Einstellungen): eine Datei mit allem, auch Logbuch-Fahrten und Kartenbild. Damit ziehst du auf ein neues Handy um.</li>
+        <li><b>An anderes Gerät senden:</b> Link oder QR-Code mit Zielen, Tasks, Sperrgebieten und Briefing-Wind, z. B. für das Verfolgerteam.</li>
+        <li>Alle Daten bleiben auf dem Gerät. Wird der Browser-Speicher gelöscht, sind sie weg, deshalb ab und zu sichern.</li>
+      </ul>
+    </details>
+    <details><summary>Wenn etwas nicht geht</summary>
+      <ul>
+        <li><b>Kein GPS:</b> Standort für die Seite erlauben. Die App muss über https geöffnet sein.</li>
+        <li><b>Neue Version kommt nicht:</b> App einmal mit Internet öffnen, auf „Neu laden“ tippen oder schließen und neu öffnen. Die Version steht unten im Menü.</li>
+        <li><b>Ziele liegen weit daneben:</b> UTM-Zone und Bezugspunkt in den Einstellungen prüfen.</li>
+      </ul>
+    </details>
+    <div class="btns"><button class="btn primary" data-close>Schließen</button></div>
+  </div>
+</div>
+
 <!-- Einstellungen -->
 <div class="back" id="sheet-settings">
   <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="st-title">
@@ -1116,6 +1219,7 @@ const S = load();
 let saveTimer = null, saveFailed = false;
 function saveNow(){
   clearTimeout(saveTimer); saveTimer = null;
+  if (window.__wfNoSave) return; /* nach Sicherung laden oder Daten löschen nichts mehr zurückschreiben */
   try { localStorage.setItem(KEY, JSON.stringify(S)); saveFailed = false; }
   catch (e) { if (!saveFailed) { saveFailed = true; try { showLogger('Speichern auf diesem Gerät fehlgeschlagen, der Speicher ist voll. Fahrt im Logbuch speichern und danach den Track löschen.', true); } catch (err) {} } }
 }
@@ -3028,26 +3132,46 @@ $('#tl-export').addEventListener('click', () => {
 /* ---------- Sicherung ---------- */
 let backupPending = null;
 const bkMsg = t => setText('bk-msg', t);
-$('#bk-save').addEventListener('click', () => {
-  saveFile('wettfahrt-sicherung-' + stampOf(Date.now()) + '.json', JSON.stringify({ app:'wettfahrt', version:1, savedAt:Date.now(), data:S }), 'application/json', bkMsg);
+const blobToDataUrl = b => new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = () => rej(r.error); r.readAsDataURL(b); });
+const dataUrlToBlob = u => { const i = u.indexOf(','), mime = u.slice(5, u.indexOf(';')), bin = atob(u.slice(i + 1)), a = new Uint8Array(bin.length); for (let k = 0; k < bin.length; k++) a[k] = bin.charCodeAt(k); return new Blob([a], { type:mime }); };
+/* Sicherung, Version 2: Zustand plus Logbuch-Fahrten und Kartenbild aus dem Gerätespeicher */
+$('#bk-save').addEventListener('click', async () => {
+  bkMsg('Sicherung wird erstellt …');
+  const flights = [];
+  for (const f of S.flights) { try { const r = await idbGet('flight:' + f.id); if (r) flights.push(r); } catch (e) {} }
+  let map = null;
+  if (S.map.has) { try { const b = await idbGet('map'); if (b) map = await blobToDataUrl(b); } catch (e) {} }
+  saveFile('wettfahrt-sicherung-' + stampOf(Date.now()) + '.json', JSON.stringify({ app:'wettfahrt', version:2, savedAt:Date.now(), data:S, flights, map }), 'application/json',
+    t => bkMsg(t === 'Gespeichert.' ? 'Gespeichert: ' + S.targets.length + ' Ziele, ' + S.tasks.length + ' Tasks, ' + flights.length + (flights.length === 1 ? ' Fahrt' : ' Fahrten') + (map ? ' und das Kartenbild.' : '.') : t));
 });
 $('#bk-load').addEventListener('change', async e => {
   const f = e.target.files && e.target.files[0]; e.target.value = ''; if (!f) return;
   try {
     const j = JSON.parse(await f.text());
     if (j.app !== 'wettfahrt' || !j.data || !j.data.settings || !Array.isArray(j.data.targets)) throw new Error('format');
-    backupPending = j.data;
-    bkMsg('Sicherung vom ' + new Date(j.savedAt).toLocaleString('de-AT', { dateStyle:'medium', timeStyle:'short' }) + ' mit ' + j.data.targets.length + ' Zielen und ' + (j.data.tasks || []).length + ' Tasks. Alles auf diesem Gerät damit ersetzen?');
+    backupPending = j;
+    const nf = Array.isArray(j.flights) ? j.flights.length : 0;
+    bkMsg('Sicherung vom ' + new Date(j.savedAt).toLocaleString('de-AT', { dateStyle:'medium', timeStyle:'short' }) + ' mit ' + j.data.targets.length + ' Zielen, ' + (j.data.tasks || []).length + ' Tasks'
+      + (j.version >= 2 ? ', ' + nf + (nf === 1 ? ' Fahrt' : ' Fahrten') + (j.map ? ' und Kartenbild' : '') : ' (ältere Sicherung ohne Logbuch-Fahrten und Kartenbild)') + '. Alles auf diesem Gerät damit ersetzen?');
     $('#bk-apply').hidden = false;
   } catch (err) { backupPending = null; $('#bk-apply').hidden = true; bkMsg('Diese Datei ist keine Sicherung der Wettfahrt-App.'); }
 });
-$('#bk-apply').addEventListener('click', () => {
+$('#bk-apply').addEventListener('click', async () => {
   if (!backupPending) return;
-  const base = defaults(), d = backupPending;
+  const j = backupPending, base = defaults(), d = j.data;
+  bkMsg('Sicherung wird eingespielt …');
+  const flights = Array.isArray(j.flights) ? j.flights.filter(r => r && typeof r.id === 'string' && Array.isArray(r.track)) : [];
+  let mapOk = false;
+  try {
+    for (const r of flights) await idbPut('flight:' + r.id, r);
+    if (j.map && typeof j.map === 'string' && j.map.startsWith('data:image/')) { await idbPut('map', dataUrlToBlob(j.map)); mapOk = true; }
+  } catch (err) { bkMsg('Fahrten oder Kartenbild konnten nicht gespeichert werden. Ist der Speicher voll?'); return; }
+  const known = new Set(flights.map(r => r.id));
   const merged = { ...base, ...d, settings:{ ...base.settings, ...(d.settings || {}) }, crew:{ ...base.crew, ...(d.crew || {}) },
-                   flight:{ ...base.flight, ...(d.flight || {}) }, map:{ ...base.map, ...(d.map || {}), has:false } };
+                   flight:{ ...base.flight, ...(d.flight || {}) }, map:{ ...base.map, ...(d.map || {}), has:mapOk && !!(d.map && d.map.has) },
+                   flights: j.version >= 2 ? (d.flights || []).filter(f => known.has(f.id)) : (d.flights || []) };
   try { localStorage.setItem(KEY, JSON.stringify(merged)); } catch (e) { bkMsg('Speichern war nicht möglich.'); return; }
-  location.reload();
+  window.__wfNoSave = true; location.reload();
 });
 
 /* ---------- Startcheck ---------- */
@@ -3156,7 +3280,7 @@ const COL_WORDS = { red:'red', rot:'red', vermelho:'red', rojo:'red', rosso:'red
   orange:'orange', laranja:'orange', naranja:'orange', arancione:'orange', black:'black', schwarz:'black', preto:'black', negro:'black', nero:'black', purple:'purple', violet:'violet', lila:'purple', violett:'violet', roxo:'purple' };
 const DIST = (v, u) => Math.round(parseFloat(String(v).replace(/\.(?=\d{3}\b)/, '').replace(',', '.')) * (/km/i.test(u) ? 1000 : 1));
 const minDist = t => { const a = t.match(/min\.?\s*(\d+(?:[.,]\d+)?)\s*(km|m)\b/i) || t.match(/(\d+(?:[.,]\d+)?)\s*(km|m)\b/i); return a ? DIST(a[1], a[2]) : null; };
-function parseTaskSheet(text, launchHint){
+function parseTaskSheet(text, launchHint, windAt){
   const res = { launchFrom:'', launchTo:'', tasks:[], pz:[], wind:[], info:{} };
   let cur = null, inPz = false, inWind = false, wUnit = 'kt', colTimes = [], wTok = [];
   const lines = text.split(/\r?\n/).map(l => l.replace(/\s+/g, ' ').trim()).filter(Boolean);
@@ -3297,7 +3421,8 @@ function parseTaskSheet(text, launchHint){
   if (!res.wind.length && wTok.length) res.wind = windFromTokens(wTok, wUnit);
   if (res.wind.some(w => w.cols)) {
     const lfs = res.launchFrom || launchHint || '', lf = lfs ? lfs.split(':').map(Number) : null;
-    const tgt = lf ? lf[0] * 60 + lf[1] + 30 : new Date().getHours() * 60 + new Date().getMinutes();
+    const wa = /^\d{1,2}:\d{2}$/.test(windAt || '') ? windAt.split(':').map(Number) : null;
+    const tgt = wa ? wa[0] * 60 + wa[1] : lf ? lf[0] * 60 + lf[1] + 30 : new Date().getHours() * 60 + new Date().getMinutes();
     res.windInfo = '';
     res.wind = res.wind.map(w => {
       if (!w.cols) return w;
@@ -3306,7 +3431,8 @@ function parseTaskSheet(text, launchHint){
         if (tgt <= colTimes[0]) { i = 0; f = 0; }
         else if (tgt >= colTimes[w.cols.length - 1]) { i = w.cols.length - 1; f = 0; }
         else { i = colTimes.findIndex((t, q) => q < w.cols.length - 1 && tgt >= t && tgt <= colTimes[q + 1]); f = (tgt - colTimes[i]) / (colTimes[i + 1] - colTimes[i]); }
-        res.windInfo = 'Wind für ' + pad(Math.floor(tgt / 60) % 24, 2) + ':' + pad(tgt % 60, 2) + ' aus den Vorhersagezeiten ' + colTimes.map(t => pad(Math.floor(t / 60), 2) + ':' + pad(t % 60, 2)).join(' und ') + ' ermittelt.';
+        res.windAt = pad(Math.floor(tgt / 60) % 24, 2) + ':' + pad(tgt % 60, 2); res.windGuess = !wa && !lf;
+        res.windInfo = 'Wind für ' + res.windAt + ' aus den Vorhersagezeiten ' + colTimes.map(t => pad(Math.floor(t / 60), 2) + ':' + pad(t % 60, 2)).join(' und ') + ' ermittelt.';
       }
       const vec = c => { const a = (c[0] + 180) * RAD; return [Math.sin(a) * c[1], Math.cos(a) * c[1]]; };
       const a = vec(w.cols[i]), b = vec(w.cols[Math.min(i + 1, w.cols.length - 1)]);
@@ -3352,7 +3478,7 @@ function normTs(r){
   const s = v => typeof v === 'string' ? v : '', n = v => (v == null || v === '' || !isFinite(+v)) ? null : +v;
   const tme = v => /^\d{1,2}[:.]\d{2}$/.test(s(v).trim()) ? hhmmOf(s(v).trim()) : '';
   return {
-    windInfo: s(r && r.windInfo),
+    windInfo: s(r && r.windInfo), windAt: s(r && r.windAt), windGuess: !!(r && r.windGuess),
     minIlp: n(r && r.minIlp), info: (r && typeof r.info === 'object' && r.info) ? r.info : {}, qnh: n(r && r.qnh),
     launchFrom: tme(r && r.launchFrom), launchTo: tme(r && r.launchTo),
     tasks: (Array.isArray(r && r.tasks) ? r.tasks : []).map((k, i) => ({
@@ -3433,11 +3559,20 @@ async function readTaskSheet(){
     try { res = normTs(await sampleFn.json(tsPrompt(text, tsImages.length) + (impMode === 'wx' && S.flight.launchFrom ? '\nDas Startfenster beginnt um ' + S.flight.launchFrom + '.' : ''), tsImages.length ? { images:tsImages.slice(0, 5) } : {})); }
     catch (e) { res = null; tiStatus(e && e.code === 'not_granted' ? 'Auslesen mit Claude wurde nicht erlaubt.' : 'Claude konnte das Task Sheet nicht auslesen.'); }
   }
-  if (!res && text) { res = normTs(parseTaskSheet(text, impMode === 'wx' ? S.flight.launchFrom : '')); }
+  if (!res && text) { res = normTs(parseTaskSheet(text, impMode === 'wx' ? S.flight.launchFrom : '', impMode === 'wx' ? $('#ti-wxat').value : '')); }
   if (!res) { if (tsImages.length) tiStatus('Fotos lassen sich nur in der Claude-Version auslesen. Lade das Task Sheet als PDF oder füge den Text ein.'); return; }
   if (impMode === 'wx') { res.tasks = []; res.pz = []; res.launchFrom = ''; res.launchTo = ''; res.info = res.info && res.info.qnh ? { qnh:res.info.qnh } : {}; } else { res.wind = []; res.windInfo = ''; }
   tsResult = res; renderTsPreview();
+  /* Uhrzeitfeld nur zeigen, wenn der Wind wirklich zwischen Vorhersagezeiten umgerechnet wurde */
+  const showAt = impMode === 'wx' && !!res.windAt;
+  $('#ti-wxat-f').hidden = !showAt;
+  if (showAt) {
+    $('#ti-wxat').value = res.windAt;
+    setText('ti-wxat-note', res.windGuess ? 'Kein Startfenster bekannt, deshalb gilt der Wind für jetzt. Bitte die Uhrzeit der Fahrt eintragen, die App rechnet dann neu.'
+      : 'Der Wetterbericht hat mehrere Vorhersagezeiten. Die App rechnet den Wind auf diese Uhrzeit um (Startfenster + 30 min).');
+  }
 }
+$('#ti-wxat').addEventListener('change', () => { if (impMode === 'wx' && $('#ti-wxat').value) readTaskSheet(); });
 function renderTsPreview(){
   const r = tsResult, box = $('#ti-preview'); box.innerHTML = '';
   const bad = [];
@@ -3450,7 +3585,7 @@ function renderTsPreview(){
     const g = k.goals.map(x => { const c = parseCoord(x.code); if (!c) bad.push(x.code); return x.code + (c ? '' : ' (?)') + (x.altFt ? ' Boden ' + x.altFt + ' ft' : ''); }).join(', ');
     add('ti-row', 'T' + k.nr + ' ' + k.type + (k.order === 'in' ? '  in Reihenfolge' : '') + (k.declBefore ? '  Deklaration vor dem Start' : '') + (k.crtWin && k.crtWin.length ? '  Fenster ' + k.crtWin.map(w => ':' + pad(w[0], 2) + '–:' + pad(w[1] % 60, 2)).join(', ') : '') + (k.minTime ? '  mind. ' + k.minTime + ' min' : '') + (k.donut ? '  Donut ' + fmtR(k.donut.inner) + '–' + fmtR(k.donut.outer) + (k.donut.ceil ? ' unter ' + k.donut.ceil + ' ft' : '') + (k.donut.declared ? ', Zentrum deklariert' : '') : '') + (k.fromGoals ? '  Abstand zu gesetzten Zielen ' + fmtDist(k.fromGoals) : '') + (k.prevDist ? '  vom letzten Messpunkt ' + fmtDist(k.prevDist) : '') + (k.areas && k.areas.length ? '  Wertungsfläche' : '') + (k.drop ? (k.drop === 'gravity' ? '  fallen lassen' : '  frei werfen') : '') + (k.rules && k.rules.length ? '  Abstände: ' + k.rules.map(ruleText).join(', ') : '') + (k.mcolors && k.mcolors.length ? '  Marker ' + k.mcolors.map(c => (PAL.find(p => p[0] === EN_COL[c]) || ['', c])[1]).join('/') : k.mcolor ? '  Marker ' + (PAL.find(p => p[0] === EN_COL[k.mcolor]) || ['', k.mcolor])[1] : '') + (k.minAlt ? '  min. ' + k.minAlt + ' ft' : '') + (k.maxDecl ? '  max. ' + k.maxDecl + ' Dekl.' : '') + (k.from ? '  ' + k.from + '–' + k.to : k.to ? '  bis ' + k.to : '') + (k.mma ? '  MMA ' + k.mma + ' m' : '') + (k.dir != null ? '  Richtung ' + k.dir + '°' : '') + (k.limit ? '  Distanz ' + fmtDist(k.limit) : '') + (g ? '\nZiele: ' + g : '') + (k.note ? '\n' + k.note : ''));
   }
-  if (r.wind.length) add('ti-row wind', 'Wind aus dem Briefing' + (r.windInfo ? '\n' + r.windInfo : '') + '\n' + r.wind.map(w => (w.alt === 'SFC' ? 'Boden' : w.alt + ' ft') + ': aus ' + pad(Math.round(w.from), 3) + '°, ' + w.speed + ' ' + ({ kt:'kt', kmh:'km/h', ms:'m/s' })[w.unit] + (w.unit === 'kmh' ? '' : ' = ' + Math.round(windKmh(w)) + ' km/h') + (w.range ? ' (Mittel aus Bereich)' : '')).join('\n'));
+  if (r.wind.length) add('ti-row wind', 'Wind aus dem Briefing' + (r.windInfo ? '\n' + r.windInfo : '') + '\n' + r.wind.map(w => (w.alt === 'SFC' ? 'Boden' : w.alt + ' ft') + ': aus ' + pad(Math.round(w.from), 3) + '°, ' + String(w.speed).replace('.', ',') + ' ' + ({ kt:'kt', kmh:'km/h', ms:'m/s' })[w.unit] + (w.unit === 'kmh' ? '' : ' = ' + Math.round(windKmh(w)) + ' km/h') + (w.range ? ' (Mittel aus Bereich)' : '')).join('\n'));
   for (const z of r.pz) add('ti-row pz', z.name + ': ' + (z.type === 'poly' ? z.pts.length + ' Eckpunkte' : z.center + ', Radius ' + fmtR(z.r)) + (z.ceil ? ', bis ' + z.ceil + ' ft' : ''));
   add('note', 'Kurze Koordinaten (4/4) werden über den Bezugspunkt ' + Math.round(S.settings.refE) + '/' + Math.round(S.settings.refN) + ' zugeordnet.' + (bad.length ? ' Nicht lesbar: ' + bad.join(', ') + '.' : ''));
   $('#ti-apply').disabled = false;
@@ -3504,6 +3639,7 @@ function openTsImport(mode){
   impMode = mode === 'wx' ? 'wx' : 'ts';
   closeSheets(); tsResult = null; tsImages = [];
   $('#ti-text').value = ''; $('#ti-preview').innerHTML = ''; $('#ti-apply').disabled = true; setText('ti-file-name', '');
+  $('#ti-wxat').value = ''; $('#ti-wxat-f').hidden = true;
   const wx = impMode === 'wx';
   setText('ti-title', wx ? 'Wetterbericht importieren' : 'Task Sheet importieren');
   setText('ti-filelbl', wx ? 'Wetterbericht wählen (PDF, Text, Foto)' : 'Task Sheet wählen (PDF, Text, Foto)');
@@ -4047,6 +4183,7 @@ const openers = {
   planner: () => { if (!activeTarget()) { closeSheets(); setStatus('Erst ein Ziel aktivieren', 'warn'); return; } togglePlanner(true); },
   reset: () => { const b = $('#rs-log'); b.textContent = 'Vorher im Logbuch speichern'; b.disabled = false; renderReset(); openSheet('#sheet-reset'); },
   check: () => { renderCheck(); openSheet('#sheet-check'); },
+  help: () => { openSheet('#sheet-help'); },
   settings: () => { bkMsg(''); $('#bk-apply').hidden = true; fillSettings(); installNote(); renderSerial(); openSheet('#sheet-settings'); }
 };
 $('#btn-menu').addEventListener('click', () => {

@@ -41,5 +41,6 @@ Repository mit Vercel oder GitHub Pages verbinden, kein Build-Schritt (Vercel: F
 - Startplatz-Planer, Karte mit Vorlauf, Kreis um die eigene Position
 - Track-Aufzeichnung, Logbuch, GPX-Export, IGC-Import mit Vergleich
 - Externes GPS über USB (Web Serial, NMEA), manuelle Höhe
-- Teilen per Link oder QR-Code, Sicherung als Datei
+- Teilen per Link oder QR-Code, Sicherung als Datei (mit Logbuch-Fahrten und Kartenbild)
+- Hilfe mit Kurzanleitung im Menü
 - Startcheck, Ansagen, Simulation, offline installierbar

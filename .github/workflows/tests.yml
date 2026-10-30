@@ -1,0 +1,51 @@
+# Prüft bei jedem Hochladen und jedem Pull Request, ob die App noch fehlerfrei startet und rechnet.
+name: Tests
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Playwright installieren
+        run: |
+          pip install playwright==1.48.0
+          python -m playwright install --with-deps chromium
+
+      - name: Syntax und Version prüfen
+        run: bash tests/check.sh
+
+      - name: Versionsnummer in Menü und Offline-Speicher passen zusammen
+        run: |
+          v=$(grep -o "Version 20[0-9]*-[0-9]*-[0-9]*\.[0-9]*" index.html | head -1 | sed 's/Version //; s/\./-/')
+          c=$(grep -o "const CACHE = 'wettfahrt-[^']*'" sw.js | sed "s/.*wettfahrt-//; s/'//")
+          echo "Menü: $v  Cache: $c"
+          test "$v" = "$c"
+
+      - name: Webserver starten
+        run: |
+          python -m http.server 8080 &
+          for i in $(seq 1 30); do curl -sf http://localhost:8080/ >/dev/null && break; sleep 1; done
+
+      - name: Rauchtest
+        run: python tests/smoke.py
+
+      - name: Task Sheets und Wetterberichte
+        run: python tests/tasksheets.py
+
+      - name: Sicherung von Gerät zu Gerät
+        run: python tests/sicherung.py

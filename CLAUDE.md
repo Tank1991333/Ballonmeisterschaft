@@ -29,7 +29,8 @@ Die ganze App steckt in **einer Datei `index.html`** (rund 4700 Zeilen, ohne Bui
 | Leitungen aus KML | `parseKmlShapes`, `lineStatus` |
 | Startplatz-Planer | `plannerRays`, `evalLaunch` |
 | Kalibrieren | `openCalSheet`, `calAnchor`, `fitCal` (Drehung > 8° → Zahlen vertauscht), `openCalpad` |
-| Teilen | `packShare`/`unpackShare` (deflate-raw, base64url im Hash `#wf=`), QR über qrcode-generator |
+| Teilen | `packShare`/`unpackShare` (deflate-raw, base64url im Hash `#wf=`), QR über qrcode-generator, `applyRecv` prüft empfangene Daten |
+| Sicherung | Version 2: Zustand plus Logbuch-Fahrten und Kartenbild (Data-URL); `window.__wfNoSave` verhindert Zurückschreiben vor `location.reload()` |
 
 ## Regeln
 
@@ -48,10 +49,15 @@ bash tests/check.sh
 python3 -m http.server 8080 &
 python3 tests/smoke.py
 python3 tests/tasksheets.py
+python3 tests/sicherung.py
 ```
 
-Bei Änderungen an `parseTaskSheet` immer `tests/tasksheets.py` laufen lassen und die Ausgabe für alle Task Sheets kontrollieren.
+Dieselben Tests laufen bei jedem Push in GitHub Actions (`.github/workflows/tests.yml`). Der Workflow prüft auch, dass `Version` im Menü und `CACHE` in `sw.js` zusammenpassen.
+
+Bei Änderungen an `parseTaskSheet` immer `tests/tasksheets.py` laufen lassen und die Ausgabe für alle Task Sheets kontrollieren; bei gewollten Verbesserungen die erwarteten Zahlen in `EXPECT` nachziehen.
+
+Die Hilfe (`#sheet-help`) bei neuen oder geänderten Funktionen mit anpassen.
 
 ## Offene Ideen
 
-Gas und Ausdauer, Lastrechner, automatischer Track (Abheben/Landen), Bluetooth-GPS und Barometer (Web Bluetooth, Android), Live-Verfolgung auf der eigenen Seite (z. B. Firebase), Bedienungsanleitung bei größeren Änderungen nachziehen.
+Gas und Ausdauer, Lastrechner, automatischer Track (Abheben/Landen), Bluetooth-GPS und Barometer (Web Bluetooth, Android), Live-Verfolgung auf der eigenen Seite (z. B. Firebase).
