@@ -475,7 +475,7 @@ details.more summary{cursor:pointer;color:var(--ink-2);font-size:.9rem;margin:.4
       <button data-open="reset"><b>Fahrt-Punkte löschen</b><small>Karte für die nächste Fahrt</small></button>
     </div>
     <button class="btn" data-open="settings" style="width:100%;margin-top:1rem">Einstellungen<small id="mt-set" style="display:none"></small></button>
-    <p class="note" style="text-align:center;margin-top:.9rem">Version 2026-10-27.1</p>
+    <p class="note" style="text-align:center;margin-top:.9rem">Version 2026-10-30.1</p>
   </div>
 </div>
 
@@ -1113,11 +1113,19 @@ function load(){
   const d = defaults(); seedDemo(d); d.firstRun = true; return d;
 }
 const S = load();
-let saveTimer = null;
+let saveTimer = null, saveFailed = false;
+function saveNow(){
+  clearTimeout(saveTimer); saveTimer = null;
+  try { localStorage.setItem(KEY, JSON.stringify(S)); saveFailed = false; }
+  catch (e) { if (!saveFailed) { saveFailed = true; try { showLogger('Speichern auf diesem Gerät fehlgeschlagen, der Speicher ist voll. Fahrt im Logbuch speichern und danach den Track löschen.', true); } catch (err) {} } }
+}
 function save(){
   clearTimeout(saveTimer);
-  saveTimer = setTimeout(() => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} }, 300);
+  saveTimer = setTimeout(saveNow, 300);
 }
+/* beim Schließen oder Wechseln in eine andere App sofort sichern, sonst gehen die letzten Änderungen und Trackpunkte verloren */
+window.addEventListener('pagehide', saveNow);
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') saveNow(); });
 
 /* ---------- Kartenbild im Gerätespeicher ---------- */
 function idbOpen(){
@@ -1600,7 +1608,13 @@ let gpsRetry = null;
 let gpsFirst = true, gpsSrcLabel = 'GPS';
 function handleGeo(p){
   const c = p.coords; let z = S.settings.zone; const zPrev = z;
-  if (S.settings.zoneAuto) { z = zoneOf(c.longitude); if (z !== S.settings.zone) S.settings.zone = z; }
+  /* Zone nur beim ersten Signal bestimmen, nie mitten in der Fahrt wechseln: an einer Zonengrenze (z. B. 12° Ost)
+     würden sonst Position, Ziele und Sperrgebiete um Hunderte Kilometer auseinanderspringen.
+     Liegen Bezugspunkt oder Ziele in der bisherigen Zone in der Nähe, bleibt die Zone wie sie ist. */
+  if (S.settings.zoneAuto && gpsFirst && zoneOf(c.longitude) !== z) {
+    const u0 = ll2utm(c.latitude, c.longitude, z), near = (E, N) => Math.hypot(E - u0.E, N - u0.N) < 150000;
+    if (!near(S.settings.refE, S.settings.refN) && !S.targets.some(t => near(t.E, t.N))) { z = zoneOf(c.longitude); S.settings.zone = z; }
+  }
   const u = ll2utm(c.latitude, c.longitude, z);
   if (gpsFirst) {
     gpsFirst = false; gpsBar('');
@@ -3044,7 +3058,8 @@ function checks(){
   out.push({ ok: gps, txt:'Positionsquelle GPS', sub: gps ? (st.gpsSrc === 'serial' ? 'externes GPS über USB' : 'GPS ist aktiv') : 'Die Simulation ist aktiv', act: gps ? null : ['Umstellen', () => { st.mode = 'gps'; save(); applyMode(); }] });
   out.push({ ok: gps && !!pos && pos.rawAltFt != null, txt:'GPS-Höhe', sub: !gps || !pos ? 'wird mit GPS geprüft' : pos.rawAltFt != null ? 'Gerät liefert eine Höhe' : 'Gerät liefert keine Höhe: manuelle Höhe links unten verwenden und mit dem Höhenmesser abgleichen', act: pos && pos.rawAltFt == null ? ['Höhe eingeben', openAltSheet] : null });
   out.push({ ok: lastAcc != null && lastAcc <= 30, txt:'GPS-Genauigkeit', sub: lastAcc != null ? '±' + Math.round(lastAcc) + ' m' + (lastAcc > 30 ? ', besser unter 30 m' : '') : 'noch kein GPS-Signal' });
-  out.push({ ok: lastLon != null && zoneOf(lastLon) === st.zone, txt:'UTM-Zone ' + st.zone, sub: lastLon != null ? (zoneOf(lastLon) === st.zone ? 'passt zur Position' : 'Position liegt in Zone ' + zoneOf(lastLon)) : 'wird mit GPS geprüft' });
+  { const off = lastLon != null ? Math.abs(((lastLon - ((st.zone - 1) * 6 - 177)) % 360 + 540) % 360 - 180) : null; /* Abstand zum Mittelmeridian der Zone */
+  out.push({ ok: off != null && off <= 4.5, txt:'UTM-Zone ' + st.zone, sub: off == null ? 'wird mit GPS geprüft' : zoneOf(lastLon) === st.zone ? 'passt zur Position' : off <= 4.5 ? 'Position liegt knapp in Zone ' + zoneOf(lastLon) + ', bleibt auf ' + st.zone + ' wie die Wettbewerbskarte' : 'Position liegt in Zone ' + zoneOf(lastLon) + ', in den Einstellungen prüfen' }); }
   const refD = pos ? Math.hypot(pos.E - st.refE, pos.N - st.refN) : null;
   out.push({ ok: refD != null && refD < 50000, txt:'Bezugspunkt', sub: refD != null ? (refD < 1000 ? 'unter 1 km entfernt' : Math.round(refD / 1000) + ' km entfernt') : 'noch keine Position', act: pos && refD >= 50000 ? ['Übernehmen', () => { st.refE = Math.round(pos.E); st.refN = Math.round(pos.N); save(); }] : null });
   const altOk = !!st.altCheckedAt && Date.now() - st.altCheckedAt < 12 * 3600000;
@@ -3278,6 +3293,8 @@ function parseTaskSheet(text, launchHint){
     k.mcolor = k.mcolors[0] || '';
     delete k.raw; delete k.lm; delete k.lg; delete k.notes;
   }
+  /* Windtabellen, deren Werte im PDF einzeln untereinander stehen */
+  if (!res.wind.length && wTok.length) res.wind = windFromTokens(wTok, wUnit);
   if (res.wind.some(w => w.cols)) {
     const lfs = res.launchFrom || launchHint || '', lf = lfs ? lfs.split(':').map(Number) : null;
     const tgt = lf ? lf[0] * 60 + lf[1] + 30 : new Date().getHours() * 60 + new Date().getMinutes();
@@ -4627,11 +4644,30 @@ function applyRecv(replace){
   const d = recvData; if (!d) return;
   const st = S.settings;
   if (d.z) { st.zone = d.z; st.zoneAuto = false; } if (d.re) { st.refE = d.re; st.refN = d.rn; } if (d.de) { st.digE = d.de; st.digN = d.dn; }
-  const tg = (d.t || []).map(a => ({ id:a[0], name:a[1], E:a[2], N:a[3], radii:a[4] || [], elevFt:a[5], locked:!!a[6], sym:a[7] || 'x', color:a[8] || '', ringCol:a[9] || [] }));
+  /* empfangene Daten prüfen: ein kaputter Link darf die gespeicherten Daten nicht unbrauchbar machen */
+  const fin = v => typeof v === 'number' && isFinite(v), arr = v => Array.isArray(v) ? v : [], str = (v, n) => typeof v === 'string' ? v.slice(0, n) : '';
+  const nums = v => arr(v).filter(fin);
+  const pt = p => Array.isArray(p) && fin(p[0]) && fin(p[1]);
+  const tg = arr(d.t).filter(a => Array.isArray(a) && fin(a[2]) && fin(a[3])).map(a => ({ id:str(a[0], 20) || uid(), name:str(a[1], 40) || 'Ziel', E:a[2], N:a[3], radii:nums(a[4]).slice(0, 8), elevFt: fin(a[5]) ? a[5] : null, locked:!!a[6], sym:SYMS.some(x => x[0] === a[7]) ? a[7] : 'x', color:palHex(a[8]) ? a[8] : '', ringCol:arr(a[9]).map(c => palHex(c) ? c : null) }));
+  d.k = arr(d.k).filter(k => k && typeof k === 'object' && fin(k.nr)).map(k => ({ ...k, id:str(k.id, 20) || uid(), type:str(k.type, 4) || '---', targets:arr(k.targets).filter(x => typeof x === 'string'), marks:[], decl:[],
+    rules:arr(k.rules).filter(q => q && fin(q.to) && fin(q.from)), crtWin:arr(k.crtWin).filter(w => Array.isArray(w) && fin(w[0]) && fin(w[1])), areas:arr(k.areas).map(a => arr(a).filter(pt)).filter(a => a.length >= 3), mcolors:arr(k.mcolors).filter(x => typeof x === 'string'),
+    note:str(k.note, 120), from:str(k.from, 5), to:str(k.to, 5), donut: k.donut && fin(k.donut.inner) && fin(k.donut.outer) ? k.donut : null }));
+  d.p = arr(d.p).filter(z => z && (z.type === 'poly' ? arr(z.pts).filter(pt).length >= 3 : fin(z.E) && fin(z.N) && fin(z.r) && z.r > 0))
+    .map(z => ({ id:str(z.id, 20) || uid(), name:str(z.name, 40) || 'PZ', type:z.type === 'poly' ? 'poly' : 'circle', E:z.E, N:z.N, r:z.r, pts:z.type === 'poly' ? arr(z.pts).filter(pt) : [], ceil: fin(z.ceil) ? z.ceil : null }));
+  d.w = arr(d.w).filter(w => w && fin(w.alt) && fin(w.from) && fin(w.kmh) && fin(w.t)).map(w => ({ alt:w.alt, from:w.from, kmh:w.kmh, t:w.t, src:'b' }));
+  if (d.fl && typeof d.fl === 'object') {
+    const f = { launchFrom:str(d.fl.launchFrom, 5), launchTo:str(d.fl.launchTo, 5) };
+    if (fin(d.fl.minIlp)) f.minIlp = d.fl.minIlp;
+    if (d.fl.info && typeof d.fl.info === 'object' && !Array.isArray(d.fl.info)) { f.info = {}; for (const k in d.fl.info) if (typeof d.fl.info[k] === 'string' || fin(d.fl.info[k])) f.info[k] = d.fl.info[k]; }
+    d.fl = f;
+  } else d.fl = null;
+  if (!fin(d.z) || d.z < 1 || d.z > 60) d.z = null; if (!fin(d.re) || !fin(d.rn)) d.re = null; if (![3, 4, 5, 6].includes(d.de) || ![3, 4, 5, 6, 7].includes(d.dn)) d.de = null;
   if (replace) { S.targets = tg; S.tasks = d.k || []; S.pz = d.p || []; S.activeId = null; S.activeTaskId = null; }
   else {
-    for (const t of tg) { const ex = S.targets.find(x => x.id === t.id || Math.hypot(x.E - t.E, x.N - t.N) < 15); if (ex) Object.assign(ex, { ...t, id:ex.id }); else S.targets.push(t); }
-    for (const k of d.k || []) { const ex = S.tasks.find(x => x.nr === k.nr); if (ex) Object.assign(ex, { ...k, marks:ex.marks || [], decl:ex.decl || [] }); else S.tasks.push(k); }
+    const idMap = {};
+    for (const t of tg) { const ex = S.targets.find(x => x.id === t.id || Math.hypot(x.E - t.E, x.N - t.N) < 15); if (ex) { idMap[t.id] = ex.id; Object.assign(ex, { ...t, id:ex.id }); } else S.targets.push(t); }
+    for (const k of d.k) k.targets = k.targets.map(id => idMap[id] || id);
+    for (const k of d.k || []) { const ex = S.tasks.find(x => x.nr === k.nr); if (ex) Object.assign(ex, { ...k, id:ex.id, marks:ex.marks || [], decl:ex.decl || [] }); else S.tasks.push(k); }
     for (const z of d.p || []) if (!S.pz.some(x => x.name === z.name)) S.pz.push(z);
     S.tasks.sort((a, b) => a.nr - b.nr);
   }
@@ -4658,6 +4694,7 @@ async function checkRecv(){
 
 setTrackUi();
 applyMode();
+window.addEventListener('hashchange', () => { if (location.hash.startsWith('#wf=')) checkRecv(); });
 if (location.hash.startsWith('#wf=')) { S.firstRun = false; save(); checkRecv(); }
 else if (S.firstRun) openSheet('#sheet-welcome');
 else if (S.settings.mode === 'gps' && !S.trackOn && Date.now() - (S.ckShownAt || 0) > 3 * 3600000) {

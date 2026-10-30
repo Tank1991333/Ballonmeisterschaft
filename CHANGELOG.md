@@ -13,3 +13,4 @@
 | 2026-10-09.13 | Querformat 70/30 |
 | 2026-10-09.14 | Startplatz-Planer, Stromleitungen und Flächen aus KML, Karte mit Vorlauf |
 | 2026-10-27.1 | Prüfung auf Handy, Tablet und PC: Start auf iPhones mit iOS 13 repariert, Startcheck-Knöpfe reagieren zuverlässig, Ballon nicht mehr hinter der Höhentaste, Zoomtasten am PC, Fenster am großen Bildschirm mittig, Rand bei Notch im Querformat, Speichern in der installierten iPhone-App über „Teilen“, Teilen-Link auch mit vielen Daten, Plan rechnet nach Task-Änderung neu |
+| 2026-10-30.1 | UTM-Zone wechselt nicht mehr mitten in der Fahrt (Sprung um Hunderte km an der Zonengrenze, z. B. 12° Ost), Wetterberichte mit einzeln untereinander stehenden Werten werden erkannt, sofort speichern beim Schließen der App, Warnung bei vollem Speicher, empfangene Links werden geprüft (kaputte Daten können die App nicht mehr lahmlegen), beim Ergänzen behalten Tasks ihre Ziele, Link funktioniert auch bei bereits offener App |
